@@ -1,0 +1,457 @@
+#! /usr/bin/perl -w
+use strict;
+use POSIX;
+
+sub ssh($$);
+
+# We'll do our own process-reaping
+#$SIG{CHLD} = 'IGNORE';
+
+# Parse command line
+our $config = "builds.conf";
+our @exclude = ();
+while(@ARGV > 0 and $ARGV[0] =~ /^-/) {
+    local $_ = shift @ARGV;
+    if($_ eq '--config') {
+	$config = shift @ARGV;
+    } elsif($_ eq '--exclude') {
+	push(@exclude, shift @ARGV);
+    } else {
+	die "ERROR: unknown option '$_'\n";
+    }
+}
+our @include = ();
+
+# Parse configuration file
+my $line = 0;
+my $host;			# current host stanza
+my $branch;			# current branch stanza
+my $workdir = "_builds/_master"; # working directory
+our %hosts = ();
+our @hostorder = ();
+our %branches = ();
+our @branchorder = ();
+our %defines = ();
+our %globalenv = ();
+open(CONF,  "<$config") or die "ERROR: reading $config: $!\n";
+while(defined($_ = <CONF>)) {
+    ++$line;
+    next if /^\#/ or !/\S/;	# skip blank and comment lines
+    while(/\${([a-z0-9_]+)}/i) {
+	my $k = $1;
+	my $v = ($defines{$k} or $ENV{$k});
+	if(!defined $v) {
+	    die "$config:$line: unknown definition '$k'\n";
+	}
+	s/\${$k}/$v/g;
+    }
+    s/^\s+//;
+    s/\s+$//;
+    my @l = split(/\s+/, $_);
+    my $cmd = shift @l;
+    if($cmd =~ /^define/) {
+	undef $host;
+	undef $branch;
+    }
+    if($cmd eq 'define-host') {
+	$host = shift @l;
+	push(@hostorder, $host) unless exists $hosts{$host};
+	$hosts{$host} = {
+	    'hostname' => $host,
+	    'work' => "_builds/$host",
+	    'active' => 0,
+	    'path' => [],
+	    'environ' => {},
+	    'make' => 'make',
+	    };
+    } elsif($cmd eq 'hostname') {
+	die "$config:$line: 'hostname' outside 'define-host'\n"
+	    unless defined $host;
+	$hosts{$host}->{hostname} = shift @l;
+    } elsif($cmd eq 'os') {
+	die "$config:$line: 'os' outside 'define-host'\n"
+	    unless defined $host;
+	$hosts{$host}->{os} = shift @l;
+    } elsif($cmd eq 'work') {
+	die "$config:$line: 'work' outside 'define-host'\n"
+	    unless defined $host;
+	$hosts{$host}->{work} = shift @l;
+    } elsif($cmd eq 'path') {
+	die "$config:$line: 'path' outside 'define-host'\n"
+	    unless defined $host;
+	push(@{$hosts{$host}->{path}}, shift @l);
+    } elsif($cmd eq 'environ') {
+	die "$config:$line: 'environ' outside 'define-host'\n"
+	    unless defined $host;
+	my $k = shift @l;
+	my $v = shift @l;
+	$hosts{$host}->{environ}->{$k} = $v;
+    } elsif($cmd eq 'make') {
+	die "$config:$line: 'make' outside 'define-host'\n"
+	    unless defined $host;
+	$hosts{$host}->{make} = shift @l;
+    } elsif($cmd eq 'define-branch') {
+	$branch = shift @l;
+	push(@branchorder, $branch) unless exists $branches{$branch};
+	$branches{$branch} = {
+	    'active' => 0,
+	};
+    } elsif($cmd eq 'location') {
+	die "$config:$line: 'location' outside 'define-branch'\n"
+	    unless defined $branch;
+	$branches{$branch}->{location} = shift @l;
+    } elsif($cmd eq 'define') {
+	my $k = shift @l;
+	my $v = shift @l;
+	$defines{$k} = $v;
+    } elsif($cmd eq 'global-environ') {
+	my $k = shift @l;
+	my $v = shift @l;
+	$globalenv{$k} = $v;
+    } elsif($cmd eq 'local-work') {
+	$workdir = shift @l;
+    } else {
+	die "$config:$line: unknown verb '$cmd'\n";
+    }
+}
+close CONF;
+
+# Include/exclude rules.  First if any hosts (branches) are explicitly included
+# then we activate those hosts (branches).
+my $included_hosts = 0;
+my $included_branches = 0;
+for my $hb (@include) {
+    if(exists $hosts{$hb}) {
+	$hosts{$hb}->{active} = 1;
+	$included_hosts = 1;
+    } elsif(exists $branches{$hb}) {
+	$branches{$hb}->{active} = 1;
+	$included_branches = 1;
+    } else {
+	die "ERROR: '$hb' is neither a host nor a branch\n";
+    }
+}
+
+# If no hosts (branches) were explicitly included then we activate all of them.
+if(!$included_hosts) {
+    for my $host (keys %hosts) {
+	$hosts{$host}->{active} = 1;
+    }
+}
+if(!$included_branches) {
+    for my $branch (keys %branches) {
+	$branches{$branch}->{active} = 1;
+    }
+}
+
+# We apply any explicit exclusions last (trumping all of the above).
+for my $hb (@exclude) {
+    if(exists $hosts{$hb}) {
+	$hosts{$hb}->{active} = 0;
+    } elsif(exists $branches{$hb}) {
+	$branches{$hb}->{active} = 0;
+    } else {
+	die "ERROR: '$hb' is neither a host nor a branch\n";
+    }
+}
+
+# Create and enter the working directory
+if(!-d $workdir) {
+    if(cmd("mkdir", "-p", "-m0755", $workdir)) {
+	exit(1);
+    }
+}
+chdir($workdir) or die "ERROR: chdir $workdir: $!\n";
+
+# Attempt to create remote work directories
+for my $host (keys %hosts) {
+    next unless $hosts{$host}->{active};
+    if(ssh($host, "mkdir -p -m0755 \Q$hosts{$host}->{work}\E")) {
+	$hosts{$host}->{active} = 0;
+    }
+}
+
+# Check out source code
+my $failed = 0;
+for my $branch (keys %branches) {
+    next unless $branches{$branch}->{active};
+    # Remove any old version
+    cmd("rm", "-rf", $branch) if -e $branch;
+    # Check out the latest version
+    if(cmd("bzr", "clone", "-q", $branches{$branch}->{location}, $branch)) {
+	print STDERR "ERROR: cannot get source code for $branch\n";
+	$failed++;
+    }
+}
+exit 1 if $failed;
+
+# Create the branch/host status array.  Possible statuses are:
+#  unbuilt     - done nothing yet
+#  building    - currently building
+#  buildok     - built OK
+#  buildfail   - failed to build
+#  checking    - currently checking
+#  checkok     - checked OK
+#  checkfail   - failed to check
+for my $branch (keys %branches) {
+    next unless $branches{$branch}->{active};
+    $branches{$branch}->{status} = {};
+    for my $host (keys %hosts) {
+	$branches{$branch}->{status}->{$host} = "unbuilt";
+    }
+}
+
+# Create the host status array.  Possible status are:
+#  idle       - not doing anything
+#  working    - building something
+for my $host (keys %hosts) {
+    next unless $hosts{$host}->{active};
+    $hosts{$host}->{status} = "idle";
+}
+
+# Main loop
+for(;;) {
+    # See if any subprocess have finished
+    for my $host (keys %hosts) {
+	next unless $hosts{$host}->{status} eq 'working';
+	# See if this host's job has finished
+	my $r = waitpid($hosts{$host}->{pid}, WNOHANG);
+	if($r > 0) {
+	    # It has; update the branch status
+	    my $branch = $hosts{$host}->{branch};
+	    if($branches{$branch}->{status}->{$host} eq 'building') {
+		if($?) {
+		    $branches{$branch}->{status}->{$host} = 'buildfail';
+		} else {
+		    $branches{$branch}->{status}->{$host} = 'buildok';
+		}
+	    } else {
+		if($?) {
+		    $branches{$branch}->{status}->{$host} = 'checkfail';
+		} else {
+		   $branches{$branch}->{status}->{$host}  = 'checkok';
+		}
+	    }
+	    # ...and the host status
+	    $hosts{$host}->{status} = 'idle';
+	    print STDERR "$host $branch -> $branches{$branch}->{status}->{$host}\n";
+	    make_html();
+	}
+    }
+    # Enumerate idle hosts
+    my @idle = ();
+    my $working = 0;
+    for my $host (keys %hosts) {
+	next unless $hosts{$host}->{active};
+	if($hosts{$host}->{status} eq 'idle') {
+	    push(@idle, $host);
+	} else {
+	    ++$working;
+	}
+    }
+    if(@idle == 0) {
+	# No host is idle.  Wait a bit and try again.
+	sleep(2);
+	next;
+    }
+    # For each idle host look for some work to do
+    for my $host (@idle) {
+	next unless $hosts{$host}->{active};
+	my $b;
+	# Look for some work for this host to do
+	for my $branch (keys %branches) {
+	    next unless $branches{$branch}->{active};
+	    my $s = $branches{$branch}->{status}->{$host};
+	    if($s eq 'unbuilt' or $s eq 'buildok') {
+		$b = $branch;
+		last;
+	    }
+	}
+	# Skip this host if there's no more work for it
+	next unless defined $b;
+	$hosts{$host}->{branch} = $b;
+	my $w = $hosts{$host}->{work};
+	my $env = "";
+	for my $k (keys %globalenv) {
+	    $env .= "$k=\Q$globalenv{$k}\E;export $k;"
+	}
+	my $e = $hosts{$host}->{environ};
+	for my $k (keys %$e) {
+	    $env .= "$k=\Q$e->{$k}\E;export $k;"
+	}
+	if(@{$hosts{$host}->{path}}) {
+	    $env .= "PATH=" . join(":", @{$hosts{$host}->{path}}, "\$PATH") . ";export PATH;";
+	}
+	if($branches{$b}->{status}->{$host} eq 'unbuilt') {
+	    # Copy the source code to the build host.  We could do this
+	    # in the background too but for now we do it synchronously;
+	    # it's probably not actually going to be a large proportion
+	    # of the build time.
+	    ssh($host, "rm -rf \Q$w/$b\E");
+	    cmd("rsync", "-r", "$b", "$hosts{$host}->{hostname}:$w/.");
+	    # Start the build
+	    $hosts{$host}->{pid} = background("$host.$b.BUILD",
+            sub {
+		# Figure out how to build the software.  It would be
+		# nice if we could put this logic into the config file
+		# and provide per-branch overrides but for now this will
+		# do.
+		
+		# On Debian-like systems we attempt a native build,
+		# including producing .deb files.
+		if(-d "$b/debian"
+		   and ($hosts{$host}->{os} =~ /^(debian|ubuntu)/i)) {
+		    return ssh($host,
+			       "$env cd \Q$w/$b\E && debian/rules build && fakeroot debian/rules binary");
+		}
+		# If there's a prepare we run that and then configure
+		# before doing the make
+		if(-e "$b/prepare") {
+		    return ssh($host,
+			       "$env cd \Q$w/$b\E && bash ./prepare && ./configure && $hosts{$host}->{make}");
+		}
+		# If there's a configure we run that before doing the make
+		if(-e "$b/configure") {
+		    return ssh($host,
+			       "$env cd \Q$w/$b\E && ./configure && $hosts{$host}->{make}");
+		}
+		# Hopefuly there is at least a makefile
+		return ssh($host, "$env cd \Q$w/$b\E && $hosts{$host}->{make}");
+	    });
+	    $branches{$b}->{status}->{$host} = 'building';
+	} else {
+	    # Start the check
+	    $hosts{$host}->{pid} = background("$host.$b.CHECK",
+	    sub {
+		return ssh($host, "$env cd \Q$w/$b\E && $hosts{$host}->{make} check");
+	    });
+	    $branches{$b}->{status}->{$host} = 'checking';
+	}
+	# Count up number of working hosts
+	++$working;
+	$hosts{$host}->{status} = 'working';
+	print STDERR "$host $b -> $branches{$b}->{status}->{$host}\n";
+	make_html();
+    }
+    # If there's no hosts doing any work then quit
+    last if $working == 0;
+    # Wait a bit before going round again
+    sleep(2);
+}
+
+make_html();
+
+sub make_html {
+    open(OUTPUT, ">index.html.new") or die "ERROR: index.html.new: $!\n";
+
+    print OUTPUT "<html><head>\n";
+    print OUTPUT " <title>Build report</title>\n";
+    print OUTPUT " <link rel=StyleSheet type=\"text/css\" href=\"builds.css\">\n";
+    print OUTPUT "</head>\n";
+    print OUTPUT "<body>\n";
+    print OUTPUT " <h1>Build Report</h1>\n";
+    print OUTPUT " <table>\n";
+    print OUTPUT "  <tr class=host>\n";
+    print OUTPUT "   <th class=corner>\n";
+
+    for my $host (@hostorder) {
+	next unless $hosts{$host}->{active};
+	print OUTPUT "   <th class=host>$host\n";
+    }
+
+    print OUTPUT "  <tr class=platform>\n";
+    print OUTPUT "   <th class=corner>\n";
+
+    for my $host (@hostorder) {
+	next unless $hosts{$host}->{active};
+	if($hosts{$host}->{os} =~ /-/) {
+	    print OUTPUT "   <th class=os>$`\n";
+	} else {
+	    print OUTPUT "   <th class=os>$hosts{$host}->{os}\n";
+	}
+    }
+
+    print OUTPUT "  <tr class=platform>\n";
+    print OUTPUT "   <th class=corner>\n";
+
+    for my $host (@hostorder) {
+	next unless $hosts{$host}->{active};
+	if($hosts{$host}->{os} =~ /-/) {
+	    print OUTPUT "   <th class=os>$'\n";
+	} else {
+	    print OUTPUT "   <th class=os>\n";
+	}
+    }
+
+    for my $branch (@branchorder) {
+	next unless $branches{$branch}->{active};
+	print OUTPUT "  <tr class=results>\n";
+	print OUTPUT "   <th class=branch>$branch\n";
+	for my $host (@hostorder) {
+	    next unless $hosts{$host}->{active};
+	    my $s = $branches{$branch}->{status}->{$host};
+	    my $log;
+	    my $bad;
+	    my $word;
+	    if($s =~ /^build/) {
+		$log = "$host.$branch.BUILD";
+		$bad = 'B';
+	    } elsif($s =~ /^check/) {
+		$log = "$host.$branch.CHECK";
+		$bad = 'C';
+	    } else {
+		$bad = 'Z';
+	    }
+	    if($s eq 'unbuilt') { $word = '?'; }
+	    elsif($s eq 'building') { $word = 'b...'; }
+	    elsif($s eq 'buildok') { $word = ':)'; }
+	    elsif($s eq 'buildfail') { $word = 'B'; }
+	    elsif($s eq 'checking') { $word = 'c...'; }
+	    elsif($s eq 'checkok') { $word = ':)'; }
+	    elsif($s eq 'checkfail') { $word = 'C'; }
+	    if(defined $log) {
+		print OUTPUT "   <td class=$s><a href=\"$log\">$word</a>\n";
+	    } else {
+		print OUTPUT "   <td class=$s>$word\n";
+	    }
+	}
+    }
+    close OUTPUT;
+    rename "index.html.new", "index.html" or die "ERROR: renaming index.html.new: $!\n";
+}
+
+# cmd(PROG, ARG, ARG, ...) - execute command (NOT via the shell)
+sub cmd {
+    print STDERR "EXEC: ", join(" ", @_), "\n";
+    my $rc = system(@_);
+    if($rc != 0) {
+	printf STDERR "ERROR: $_[0] returned %#x\n", $rc;
+    }
+    return $rc;
+}
+
+# ssh(HOST, CMD) - exceute CMD on HOST via ssh (and therefore via the shell)
+sub ssh($$) {
+    my $host = shift;
+    my $cmd = shift;
+
+    return cmd("ssh", $hosts{$host}->{hostname}, $cmd);
+}
+
+# background(LOGFILE, SUBROUTINE) - start executing SUBROUTINE in a subprocess
+# with output sent to LOGFILE; returns the PID.
+sub background {
+    my $log = shift;
+    my $cmd = shift;
+    my $pid = fork();
+    if(!defined $pid) {
+	die "ERROR: fork: $!\n";
+    }
+    if($pid == 0) {
+	open(STDOUT, ">$log") or die "ERROR: $log: $!\n";
+	open(STDERR, ">&STDOUT");
+	open(STDIN, "</dev/null");
+	POSIX::_exit(&$cmd(@_) ? 1 : 0);
+    }
+    return $pid;
+}

@@ -1,0 +1,37 @@
+body {
+  color: black;
+  background-color: white
+}
+
+a:link, a:visited, a:active {
+  color: black;
+  text-decoration: none
+}
+
+td.unbuilt { 
+  background-color: #c0c0c0
+}
+
+td.building { 
+  background-color: #ffff80
+}
+
+td.buildfail { 
+  background-color: #ff0000
+}
+
+td.buildok { 
+  background-color: #ffff40
+}
+
+td.checking { 
+  background-color: #ffff40
+}
+
+td.checkfail { 
+  background-color: #ff8080
+}
+
+td.checkok { 
+  background-color: #40ff40
+}
