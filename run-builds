@@ -2,6 +2,55 @@
 use strict;
 use POSIX;
 
+=head1 NAME
+
+run-builds - automatically build software on multiple hosts
+
+=head1 SYNOPSIS
+
+B<run-builds> [B<--config> PATH] [B<--exclude> BRANCH|HOST]... BRANCH|HOST...
+
+=head1 DESCRIPTION
+
+This program uses SSH to connect to multiple hosts to retrieve chosen
+software packages, referred to as I<branches> from version control and
+build and test them.
+
+At present only B<bzr> is supported.
+
+While it runs, an B<index.html> file is written out showing current
+status and with hyperlinks to build logs.
+
+=head1 OPTIONS
+
+=over
+
+=item B<--config> PATH
+
+Specifies the path to the configuration file.  The default is
+I<builds.conf>.
+
+=item B<--exclude> BRANCH|HOST
+
+Exclude a branch or host from the build.  B<--exclude> can be
+specified more than once.
+
+=back
+
+Branches and hosts are selected as follows:
+
+1) If branches are specified on the command line then only those
+branches are built.  Similarly if hosts are specified on the command
+line then only those hosts will be used.
+
+2) If no branches are specified on the command line then all branches
+are built.  Similarly if no hosts are specified on the command line
+then all hosts are used.
+
+3) B<--exclude> commands override all of the above.
+
+=cut
+
 sub ssh($$);
 
 # We'll do our own process-reaping
@@ -21,6 +70,101 @@ while(@ARGV > 0 and $ARGV[0] =~ /^-/) {
     }
 }
 our @include = ();
+
+=head1 CONFIGURATION FILE
+
+The configuration file contains global directives, host stanzas and
+branch stanzas.  Stanzas start with a B<define-host> or
+B<define-branch> directive and are followed by host-specific or
+branch-specific directives.  These are conventionally indented to
+illustrate the grouping but this is not enforced.
+
+Blank lines and lines starting "#" are ignored.
+
+Strings of the form B<${...}> in the configuration file are expanded
+using macro definitions or environment variables.
+
+=head2 Global Directives
+
+The following global directives are suported.  They may appear
+anywhere in the config file.
+
+=over
+
+=item B<define> NAME VALUE
+
+Define a macro.  These participate in B<${...}> expansion in the
+configuration file.
+
+=item B<global-environ> NAME VALUE
+
+Defines an environment variable to define on the build hosts.  Note
+that these do NOT participate in B<${...}> expansion currently (but
+this might be changed).
+
+=item B<local-work> PATH
+
+Defines the local work directory.  The default is B<_builds/_master>.
+This will contain working trees and build logs.
+
+=back
+
+=head2 Host Stanzas
+
+A host stanza starts B<define-host> NAME and is followed by per-host
+directives.  The name need not be the hostname of the target host, it
+could be an abbreviation.  Host-specific directives are:
+
+=over
+
+=item B<hostname> NAME
+
+Defines the actual hostname to SSH to.  The default is the name given
+in B<define-branch>.  This could optionally take the form USER@HOST.
+
+=item B<os> PLATFORM
+
+Defines the platform name.  This should take the form
+PLATFORM-VERSION.  Platforms 'debian' and 'ubuntu' are special in that
+a B<debian/rules> build will be performed on those platforms if
+possible.
+
+=item B<work> PATH
+
+Defines the work directory for this host.  The default is
+B<_builds/>NAME where NAME is as given in B<define-host>.
+
+=item B<path> EXTRA-PATH
+
+Defines a directory to add to the start of the path on this host.  For
+instance on a Mac using Fink you might add B</sw/bin>.
+
+=item B<environ> NAME VALUE
+
+Adds a value to the environment on this host.
+
+=item B<make> MAKE
+
+Defines the name of B<make> on this host.  For instance you might
+specify B<gmake> on a system with an inadequate native version.
+
+=back
+
+=head2 Branch Stanzas
+
+A branch stanza starts B<define-branch> NAME and is followed by
+per-branch directives.  B<location> is mandatory.
+
+=over
+
+=item B<location> LOCATION
+
+Defines the branch to clone.  This can be anything acceptable to
+B<bzr>.
+
+=back
+
+=cut
 
 # Parse configuration file
 my $line = 0;
