@@ -8,30 +8,42 @@ a:link, a:visited, a:active {
   text-decoration: none
 }
 
-td.unbuilt { 
+h1 {
+  background-color: #e0ffe0
+}
+
+table {
+  border: 1px solid black
+}
+
+th.branch {
+  text-align: right
+}
+
+td.unbuilt {
   background-color: #c0c0c0
 }
 
-td.building { 
+td.building {
   background-color: #ffff80
 }
 
-td.buildfail { 
+td.buildfail {
   background-color: #ff0000
 }
 
-td.buildok { 
+td.buildok {
   background-color: #ffff40
 }
 
-td.checking { 
+td.checking {
   background-color: #ffff40
 }
 
-td.checkfail { 
+td.checkfail {
   background-color: #ff8080
 }
 
-td.checkok { 
+td.checkok {
   background-color: #40ff40
 }

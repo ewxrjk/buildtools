@@ -349,7 +349,7 @@ sub make_html {
     print OUTPUT "</head>\n";
     print OUTPUT "<body>\n";
     print OUTPUT " <h1>Build Report</h1>\n";
-    print OUTPUT " <table>\n";
+    print OUTPUT " <table class=results>\n";
     print OUTPUT "  <tr class=host>\n";
     print OUTPUT "   <th class=corner>\n";
 
@@ -376,9 +376,9 @@ sub make_html {
     for my $host (@hostorder) {
 	next unless $hosts{$host}->{active};
 	if($hosts{$host}->{os} =~ /-/) {
-	    print OUTPUT "   <th class=os>$'\n";
+	    print OUTPUT "   <th class=osver>$'\n";
 	} else {
-	    print OUTPUT "   <th class=os>\n";
+	    print OUTPUT "   <th class=osver>\n";
 	}
     }
 
