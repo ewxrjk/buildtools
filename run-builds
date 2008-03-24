@@ -348,7 +348,6 @@ for my $branch (keys %branches) {
 #  idle       - not doing anything
 #  working    - building something
 for my $host (keys %hosts) {
-    next unless $hosts{$host}->{active};
     $hosts{$host}->{status} = "idle";
 }
 
