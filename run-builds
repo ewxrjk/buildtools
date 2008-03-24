@@ -157,11 +157,10 @@ for my $hb (@exclude) {
 
 # Create and enter the working directory
 if(!-d $workdir) {
-    if(cmd("mkdir", "-p", "-m0755", $workdir)) {
+    if(system("mkdir", "-p", "-m0755", $workdir) != 0) {
 	exit(1);
     }
 }
-chdir($workdir) or die "ERROR: chdir $workdir: $!\n";
 
 # Attempt to create remote work directories
 for my $host (keys %hosts) {
@@ -176,7 +175,7 @@ my $failed = 0;
 for my $branch (keys %branches) {
     next unless $branches{$branch}->{active};
     # Remove any old version
-    cmd("rm", "-rf", $branch) if -e $branch;
+    cmd("rm", "-rf", $branch) if -e "$workdir/$branch";
     # Check out the latest version
     if(cmd("bzr", "clone", "-q", $branches{$branch}->{location}, $branch)) {
 	print STDERR "ERROR: cannot get source code for $branch\n";
@@ -299,19 +298,19 @@ for(;;) {
 		
 		# On Debian-like systems we attempt a native build,
 		# including producing .deb files.
-		if(-d "$b/debian"
+		if(-d "$workdir/$b/debian"
 		   and ($hosts{$host}->{os} =~ /^(debian|ubuntu)/i)) {
 		    return ssh($host,
 			       "$env cd \Q$w/$b\E && debian/rules build && fakeroot debian/rules binary");
 		}
 		# If there's a prepare we run that and then configure
 		# before doing the make
-		if(-e "$b/prepare") {
+		if(-e "$workdir/$b/prepare") {
 		    return ssh($host,
 			       "$env cd \Q$w/$b\E && bash ./prepare && ./configure && $hosts{$host}->{make}");
 		}
 		# If there's a configure we run that before doing the make
-		if(-e "$b/configure") {
+		if(-e "$workdir/$b/configure") {
 		    return ssh($host,
 			       "$env cd \Q$w/$b\E && ./configure && $hosts{$host}->{make}");
 		}
@@ -410,7 +409,7 @@ sub make_html {
 	    elsif($s eq 'checkok') { $word = ':)'; }
 	    elsif($s eq 'checkfail') { $word = 'C'; }
 	    if(defined $log) {
-		print OUTPUT "   <td class=$s><a href=\"$log\">$word</a>\n";
+		print OUTPUT "   <td class=$s><a href=\"$workdir/$log\">$word</a>\n";
 	    } else {
 		print OUTPUT "   <td class=$s>$word\n";
 	    }
@@ -420,14 +419,27 @@ sub make_html {
     rename "index.html.new", "index.html" or die "ERROR: renaming index.html.new: $!\n";
 }
 
-# cmd(PROG, ARG, ARG, ...) - execute command (NOT via the shell)
+# cmd(PROG, ARG, ARG, ...) - execute command (NOT via the shell).  The
+# command is always execute in the working directory.
 sub cmd {
     print STDERR "EXEC: ", join(" ", @_), "\n";
-    my $rc = system(@_);
-    if($rc != 0) {
-	printf STDERR "ERROR: $_[0] returned %#x\n", $rc;
+    my $pid = fork();
+    if(!defined $pid) {
+	die "ERROR: fork: $!\n";
     }
-    return $rc;
+    if($pid == 0) {
+	chdir($workdir) or die "ERROR: chdir $workdir: $!\n";
+	exec(@_);
+	die "ERROR: exec $_[0]: $!\n";
+    }
+    my $r = waitpid($pid, 0);
+    if($r != $pid) {
+	die "ERROR: waitpid: $!\n";
+    }
+    if($? != 0) {
+	printf STDERR "ERROR: $_[0] returned %#x\n", $?;
+    }
+    return $?;
 }
 
 # ssh(HOST, CMD) - exceute CMD on HOST via ssh (and therefore via the shell)
@@ -448,7 +460,7 @@ sub background {
 	die "ERROR: fork: $!\n";
     }
     if($pid == 0) {
-	open(STDOUT, ">$log") or die "ERROR: $log: $!\n";
+	open(STDOUT, ">$workdir/$log") or die "ERROR: $workdir/$log: $!\n";
 	open(STDERR, ">&STDOUT");
 	open(STDIN, "</dev/null");
 	POSIX::_exit(&$cmd(@_) ? 1 : 0);
