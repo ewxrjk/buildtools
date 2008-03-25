@@ -69,7 +69,7 @@ while(@ARGV > 0 and $ARGV[0] =~ /^-/) {
 	die "ERROR: unknown option '$_'\n";
     }
 }
-our @include = ();
+our @include = @ARGV;
 
 =head1 CONFIGURATION FILE
 
