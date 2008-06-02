@@ -13,37 +13,90 @@ h1 {
 }
 
 table {
-  border: 1px solid black
+  border-collapse: collapse
+}
+
+colgroup.results {
+  border-right: 1px solid black;
+  border-top: 1px solid black;
+  border-bottom: 1px solid black
+}
+
+colgroup#results0 {
+  border-left: 1px solid black;
 }
 
 th.branch {
-  text-align: right
+  text-align: right;
+  border-left: 1px solid black;
+  border-bottom: 1px solid black
+}
+
+th#branch0 {
+  border-top: 1px solid black
+}
+
+th.host {
+  padding-left: 4px;
+  padding-right: 4px
+}
+
+th.os {
+  background-color: #e0ffff;
+  padding-left: 4px;
+  padding-right: 4px
+}
+
+th.osver {
+  border-bottom: 1px solid black;
+  padding-left: 4px;
+  padding-right: 4px
 }
 
 td.unbuilt {
-  background-color: #c0c0c0
+  background-color: #c0c0c0;
+  text-align: center;
+  width: 2em
+}
+
+td.unready {
+  background-color: #c0c0c0;
+  text-align: center;
+  width: 2em
 }
 
 td.building {
-  background-color: #ffff80
+  background-color: #ffff80;
+  text-align: center;
+  width: 2em
 }
 
 td.buildfail {
-  background-color: #ff0000
+  background-color: #ff0000;
+  text-align: center;
+  width: 2em
 }
 
 td.buildok {
-  background-color: #ffff40
+  background-color: #c0ffc0;
+  text-align: center;
+  width: 2em
 }
 
 td.checking {
-  background-color: #ffff40
+  background-color: #ffff40;
+  text-align: center;
+  width: 2em
 }
 
 td.checkfail {
-  background-color: #ff8080
+  background-color: #ff8080;
+  text-align: center;
+  width: 2em
 }
 
 td.checkok {
-  background-color: #40ff40
+  background-color: #40ff40;
+  text-align: center;
+  width: 2em
 }

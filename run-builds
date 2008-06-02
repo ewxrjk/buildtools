@@ -52,6 +52,7 @@ then all hosts are used.
 =cut
 
 sub ssh($$);
+sub make_html($);
 
 # We'll do our own process-reaping
 #$SIG{CHLD} = 'IGNORE';
@@ -171,6 +172,7 @@ my $line = 0;
 my $host;			# current host stanza
 my $branch;			# current branch stanza
 my $workdir = "_builds/_master"; # working directory
+my $refresh_interval = 10;	# refresh interval
 our %hosts = ();
 our @hostorder = ();
 our %branches = ();
@@ -344,6 +346,26 @@ for my $branch (keys %branches) {
     }
 }
 
+our %buildtextmap = (
+    "unbuilt" => "?",
+    "building" => "b...",
+    "buildok" => ":)",
+    "buildfail" => "B",
+    "checking" => ":)",
+    "checkok" => ":)",
+    "checkfail" => ":)",
+);
+
+our %checktextmap = (
+    "unbuilt" => "?",
+    "building" => "?",
+    "buildok" => "?",
+    "buildfail" => "?",
+    "checking" => "c...",
+    "checkok" => ":)",
+    "checkfail" => "C",
+);
+
 # Create the host status array.  Possible status are:
 #  idle       - not doing anything
 #  working    - building something
@@ -377,7 +399,7 @@ for(;;) {
 	    # ...and the host status
 	    $hosts{$host}->{status} = 'idle';
 	    print STDERR "$host $branch -> $branches{$branch}->{status}->{$host}\n";
-	    make_html();
+	    make_html($refresh_interval);
 	}
     }
     # Enumerate idle hosts
@@ -473,7 +495,7 @@ for(;;) {
 	++$working;
 	$hosts{$host}->{status} = 'working';
 	print STDERR "$host $b -> $branches{$b}->{status}->{$host}\n";
-	make_html();
+	make_html($refresh_interval);
     }
     # If there's no hosts doing any work then quit
     last if $working == 0;
@@ -481,83 +503,125 @@ for(;;) {
     sleep(2);
 }
 
-make_html();
+make_html(0);
 
-sub make_html {
+sub make_html($) {
+    my $refresh = shift;
     open(OUTPUT, ">index.html.new") or die "ERROR: index.html.new: $!\n";
 
+    print OUTPUT "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\">\n";
     print OUTPUT "<html><head>\n";
+    if($refresh) {
+	print OUTPUT " <meta http-equiv=refresh content=\"$refresh\">\n";
+    }
     print OUTPUT " <title>Build report</title>\n";
     print OUTPUT " <link rel=StyleSheet type=\"text/css\" href=\"builds.css\">\n";
     print OUTPUT "</head>\n";
     print OUTPUT "<body>\n";
     print OUTPUT " <h1>Build Report</h1>\n";
     print OUTPUT " <table class=results>\n";
-    print OUTPUT "  <tr class=host>\n";
-    print OUTPUT "   <th class=corner>\n";
 
+    print OUTPUT "  <colgroup class=branch>\n";
+    print OUTPUT "   <col class=branch>\n";
+    print OUTPUT "  </colgroup>\n";
+    my $id = 0;
     for my $host (@hostorder) {
 	next unless $hosts{$host}->{active};
-	print OUTPUT "   <th class=host>$host\n";
+	print OUTPUT "  <colgroup id=results$id class=results>\n";
+	print OUTPUT "   <col class=build>\n";
+	print OUTPUT "   <col class=check>\n";
+	print OUTPUT "  </colgroup>\n";
+	++$id;
+    }    
+    print OUTPUT "  <thead>\n";
+    
+    print OUTPUT "   <tr class=host>\n";
+    print OUTPUT "    <th class=corner>\n";
+
+    $id = 0;
+    for my $host (@hostorder) {
+	next unless $hosts{$host}->{active};
+	print OUTPUT "    <th id=host$id colspan=2 class=host>$host\n";
+	++$id;
     }
 
-    print OUTPUT "  <tr class=platform>\n";
-    print OUTPUT "   <th class=corner>\n";
+    print OUTPUT "   <tr class=platform>\n";
+    print OUTPUT "    <th class=corner>\n";
 
+    $id = 0;
     for my $host (@hostorder) {
 	next unless $hosts{$host}->{active};
 	if($hosts{$host}->{os} =~ /-/) {
-	    print OUTPUT "   <th class=os>$`\n";
+	    print OUTPUT "    <th id=os$id colspan=2 class=os>$`\n";
 	} else {
-	    print OUTPUT "   <th class=os>$hosts{$host}->{os}\n";
+	    print OUTPUT "    <th id=os$id colspan=2 class=os>$hosts{$host}->{os}\n";
 	}
+	++$id;
     }
 
-    print OUTPUT "  <tr class=platform>\n";
-    print OUTPUT "   <th class=corner>\n";
+    print OUTPUT "   <tr class=platform>\n";
+    print OUTPUT "    <th class=corner>\n";
 
+    $id = 0;
     for my $host (@hostorder) {
 	next unless $hosts{$host}->{active};
 	if($hosts{$host}->{os} =~ /-/) {
-	    print OUTPUT "   <th class=osver>$'\n";
+	    print OUTPUT "    <th id=osver$id colspan=2 class=osver>$'\n";
 	} else {
-	    print OUTPUT "   <th class=osver>\n";
+	    print OUTPUT "    <th id=osver$id colspan=2 class=osver>\n";
 	}
+	++$id;
     }
+    print OUTPUT "  </thead>\n";
+    print OUTPUT "  <tbody>\n";
 
+    $id = 0;
     for my $branch (@branchorder) {
 	next unless $branches{$branch}->{active};
-	print OUTPUT "  <tr class=results>\n";
-	print OUTPUT "   <th class=branch>$branch\n";
+	print OUTPUT "   <tr class=results>\n";
+	print OUTPUT "    <th id=branch$id class=branch>$branch\n";
+	my $hid = 0;
 	for my $host (@hostorder) {
 	    next unless $hosts{$host}->{active};
 	    my $s = $branches{$branch}->{status}->{$host};
-	    my $log;
-	    my $bad;
-	    my $word;
+
+	    my $buildlog;
+	    my $buildstate = 'unbuilt';
+	    my $checklog;
+	    my $checkstate = 'unready';
+
 	    if($s =~ /^build/) {
-		$log = "$host.$branch.BUILD";
-		$bad = 'B';
-	    } elsif($s =~ /^check/) {
-		$log = "$host.$branch.CHECK";
-		$bad = 'C';
-	    } else {
-		$bad = 'Z';
+		$buildlog = "$host.$branch.BUILD";
+		$buildstate = $s;
 	    }
-	    if($s eq 'unbuilt') { $word = '?'; }
-	    elsif($s eq 'building') { $word = 'b...'; }
-	    elsif($s eq 'buildok') { $word = ':)'; }
-	    elsif($s eq 'buildfail') { $word = 'B'; }
-	    elsif($s eq 'checking') { $word = 'c...'; }
-	    elsif($s eq 'checkok') { $word = ':)'; }
-	    elsif($s eq 'checkfail') { $word = 'C'; }
-	    if(defined $log) {
-		print OUTPUT "   <td class=$s><a href=\"$workdir/$log\">$word</a>\n";
-	    } else {
-		print OUTPUT "   <td class=$s>$word\n";
+	    if($s =~ /^check/) {
+		$buildlog = "$host.$branch.BUILD";
+		$buildstate = 'buildok';
+		$checklog = "$host.$branch.CHECK";
+		$checkstate = $s;
 	    }
+	    if(defined $buildlog) {
+		print OUTPUT "    <td id=build$hid class=$buildstate>\n";
+		print OUTPUT "     <a href=\"$workdir/$buildlog\">\n";
+		print OUTPUT "      $buildtextmap{$s}\n";
+		print OUTPUT "     </a>\n";
+	    } else {
+		print OUTPUT "    <td id=build$hid class=$buildstate>$buildtextmap{$s}\n";
+	    }
+	    if(defined $checklog) {
+		print OUTPUT "    <td id=check$hid class=$checkstate>\n";
+		print OUTPUT "     <a href=\"$workdir/$checklog\">\n";
+		print OUTPUT "      $checktextmap{$s}\n";
+		print OUTPUT "     </a>\n";
+	    } else {
+		print OUTPUT "    <td id=check$hid class=$checkstate>$checktextmap{$s}\n";
+	    }
+	    ++$hid;
 	}
+	++$id;
     }
+    print OUTPUT "  </tbody>\n";
+    print OUTPUT " </table>\n";
     close OUTPUT;
     rename "index.html.new", "index.html" or die "ERROR: renaming index.html.new: $!\n";
 }
