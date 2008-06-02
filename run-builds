@@ -73,9 +73,6 @@ then all hosts are used.
 sub ssh($$);
 sub make_html($);
 
-# We'll do our own process-reaping
-#$SIG{CHLD} = 'IGNORE';
-
 # Parse command line
 our $config = "builds.conf";
 our @exclude = ();
@@ -145,12 +142,18 @@ in B<define-branch>.  This could optionally take the form USER@HOST.
 =item B<group> NAME
 
 Defines the group the host belongs to.  Two hosts in the same group
-will not be used concurrently.  The idea is that you identify all the
-(virtual) hosts sharing the same underlying hardware, and avoid
-overloading it by compiling on all its VMs concurrently.
+will not be used concurrently (but see B<group-limit> below).  The
+idea is that you identify all the (virtual) hosts sharing the same
+underlying hardware, and avoid overloading it by compiling on all its
+VMs concurrently.
 
 The default group name is the same as the name given in the
 B<define-host> directive.
+
+=item B<group-limit> COUNT
+
+Defines the maximum number of concurrent jobs that will be run on this
+group of hosts.  The default is 1.
 
 =item B<os> PLATFORM
 
@@ -208,6 +211,7 @@ our %branches = ();
 our @branchorder = ();
 our %defines = ();
 our %globalenv = ();
+our %group_limit = ();
 open(CONF,  "<$config") or die "ERROR: reading $config: $!\n";
 while(defined($_ = <CONF>)) {
     ++$line;
@@ -248,6 +252,10 @@ while(defined($_ = <CONF>)) {
 	die "$config:$line: 'group' outside 'define-host'\n"
 	    unless defined $host;
 	$hosts{$host}->{group} = shift @l;
+    } elsif($cmd eq 'group-limit') {
+	die "$config:$line: 'group-limit' outside 'define-host'\n"
+	    unless defined $host;
+	$group_limit{$hosts{$host}->{group}} = shift @l;
     } elsif($cmd eq 'os') {
 	die "$config:$line: 'os' outside 'define-host'\n"
 	    unless defined $host;
@@ -295,6 +303,14 @@ while(defined($_ = <CONF>)) {
     }
 }
 close CONF;
+
+# Set default group limits
+for my $host (keys %hosts) {
+    my $group = $hosts{$host}->{group};
+    if(!exists $group_limit{$hosts{$host}->{group}}) {
+	$group_limit{$hosts{$host}->{group}} = 1;
+    }
+}
 
 # Include/exclude rules.  First if any hosts (branches) are explicitly included
 # then we activate those hosts (branches).
@@ -436,14 +452,15 @@ for(;;) {
 	    make_html($refresh_interval);
 	}
     }
-    # Enumerate idle hosts
-    my %working_groups = ();
-    my $working = 0;
-    my $idle = 0;
+    my %group_jobs = map(($_ => 0), keys %group_limit);
+	                        # count of jobs per group
+    my $working = 0;		# count of working hosts
+    my $idle = 0;		# count of idle hosts
     for my $host (keys %hosts) {
 	next unless $hosts{$host}->{active};
 	if($hosts{$host}->{status} eq 'working') {
-	    $working_groups{$hosts{$host}->{group}} = 1;
+	    my $group = $hosts{$host}->{group};
+	    ++$group_jobs{$group};
 	    ++$working;
 	} else {
 	    ++$idle;
@@ -457,7 +474,9 @@ for(;;) {
     # For each idle host look for some work to do
     for my $host (keys %hosts) {
 	next unless $hosts{$host}->{active};
-	next if exists $working_groups{$hosts{$host}->{group}};
+	next unless $hosts{$host}->{status} eq 'idle';
+	my $group = $hosts{$host}->{group};
+	next if $group_jobs{$group} >= $group_limit{$group};
 	my $b;
 	# Look for some work for this host to do
 	for my $branch (keys %branches) {
@@ -531,8 +550,7 @@ for(;;) {
 	# Count up number of working hosts
 	++$working;
 	$hosts{$host}->{status} = 'working';
-
-	$working_groups{$hosts{$host}->{group}} = 1;
+	++$group_jobs{$group};
 	print STDERR "$host $b -> $branches{$b}->{status}->{$host}\n";
 	make_html($refresh_interval);
     }
@@ -688,7 +706,7 @@ sub cmd {
     return $?;
 }
 
-# ssh(HOST, CMD) - exceute CMD on HOST via ssh (and therefore via the shell)
+# ssh(HOST, CMD) - execute CMD on HOST via ssh (and therefore via the shell)
 sub ssh($$) {
     my $host = shift;
     my $cmd = shift;
