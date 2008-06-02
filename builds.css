@@ -90,7 +90,7 @@ td.checking {
 }
 
 td.checkfail {
-  background-color: #ff8080;
+  background-color: #ff0000;
   text-align: center;
   width: 2em
 }
