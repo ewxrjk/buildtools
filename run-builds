@@ -123,6 +123,16 @@ could be an abbreviation.  Host-specific directives are:
 Defines the actual hostname to SSH to.  The default is the name given
 in B<define-branch>.  This could optionally take the form USER@HOST.
 
+=item B<group> NAME
+
+Defines the group the host belongs to.  Two hosts in the same group
+will not be used concurrently.  The idea is that you identify all the
+(virtual) hosts sharing the same underlying hardware, and avoid
+overloading it by compiling on all its VMs concurrently.
+
+The default group name is the same as the name given in the
+B<define-host> directive.
+
 =item B<os> PLATFORM
 
 Defines the platform name.  This should take the form
@@ -209,11 +219,16 @@ while(defined($_ = <CONF>)) {
 	    'path' => [],
 	    'environ' => {},
 	    'make' => 'make',
+	    'group' => $host,
 	    };
     } elsif($cmd eq 'hostname') {
 	die "$config:$line: 'hostname' outside 'define-host'\n"
 	    unless defined $host;
 	$hosts{$host}->{hostname} = shift @l;
+    } elsif($cmd eq 'group') {
+	die "$config:$line: 'group' outside 'define-host'\n"
+	    unless defined $host;
+	$hosts{$host}->{group} = shift @l;
     } elsif($cmd eq 'os') {
 	die "$config:$line: 'os' outside 'define-host'\n"
 	    unless defined $host;
@@ -403,24 +418,27 @@ for(;;) {
 	}
     }
     # Enumerate idle hosts
-    my @idle = ();
+    my %working_groups = ();
     my $working = 0;
+    my $idle = 0;
     for my $host (keys %hosts) {
 	next unless $hosts{$host}->{active};
-	if($hosts{$host}->{status} eq 'idle') {
-	    push(@idle, $host);
-	} else {
+	if($hosts{$host}->{status} eq 'working') {
+	    $working_groups{$hosts{$host}->{group}} = 1;
 	    ++$working;
+	} else {
+	    ++$idle;
 	}
     }
-    if(@idle == 0) {
+    if($idle == 0) {
 	# No host is idle.  Wait a bit and try again.
 	sleep(2);
 	next;
     }
     # For each idle host look for some work to do
-    for my $host (@idle) {
+    for my $host (keys %hosts) {
 	next unless $hosts{$host}->{active};
+	next if exists $working_groups{$hosts{$host}->{group}};
 	my $b;
 	# Look for some work for this host to do
 	for my $branch (keys %branches) {
@@ -494,6 +512,8 @@ for(;;) {
 	# Count up number of working hosts
 	++$working;
 	$hosts{$host}->{status} = 'working';
+
+	$working_groups{$hosts{$host}->{group}} = 1;
 	print STDERR "$host $b -> $branches{$b}->{status}->{$host}\n";
 	make_html($refresh_interval);
     }
