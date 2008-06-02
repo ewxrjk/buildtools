@@ -602,7 +602,7 @@ sub make_html($) {
 	    }
 	    if(defined $buildlog) {
 		print OUTPUT "    <td id=build$hid class=$buildstate>\n";
-		print OUTPUT "     <a href=\"$workdir/$buildlog\">\n";
+		print OUTPUT "     <a href=\"$workdir/$buildlog\" title=\"Build log\">\n";
 		print OUTPUT "      $buildtextmap{$s}\n";
 		print OUTPUT "     </a>\n";
 	    } else {
@@ -610,7 +610,7 @@ sub make_html($) {
 	    }
 	    if(defined $checklog) {
 		print OUTPUT "    <td id=check$hid class=$checkstate>\n";
-		print OUTPUT "     <a href=\"$workdir/$checklog\">\n";
+		print OUTPUT "     <a href=\"$workdir/$checklog\" title=\"Check log\">\n";
 		print OUTPUT "      $checktextmap{$s}\n";
 		print OUTPUT "     </a>\n";
 	    } else {
