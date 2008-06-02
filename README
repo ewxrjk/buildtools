@@ -1,0 +1,11 @@
+run-builds
+==========
+
+This is a Perl script which builds a collection of different programs
+on multiple hosts.  Currently it can only build bzr branches, but it
+could be adapted to other VCSs if necessary.
+
+Run 'make' to build run-builds.txt, the documentation, or just read
+the POD messages inside the script.
+
+Please send feedback to Richard Kettlewell <rjk@greenend.org.uk>.
