@@ -1,0 +1,203 @@
+#! /usr/bin/perl -w
+use strict;
+use POSIX;
+
+our $debug = 0;
+our $notify;
+
+# Return the tip revno of a branch
+sub tip {
+    my $branch = shift;
+    my $revno = `bzr revno \Q$branch\E`;
+    exit $? if $?;
+    return int($revno);
+}
+
+# Execute a command and fail on error
+sub cmd {
+    print STDERR join(" ", ">", @_), "\n" if $debug;
+    my $rc = system(@_);
+    die "$0: executing '$_[0]': $!\n" if $rc < 0;
+    return $rc;
+}
+
+sub cd {
+    my $dir = shift;
+    print STDERR "> cd \Q$dir\E\n" if $debug;
+    chdir($dir) or die "$0: chdir $dir: $!\n";
+}
+
+while(@ARGV > 0 and $ARGV[0] =~ /^-/) {
+    my $opt = shift;
+    
+    if($opt eq "-h" or $opt eq "--help") {
+        print "Usage:
+  stabilize [OPTIONS] UNSTABLE-BRANCH STABLE-BRANCH
+
+Options:
+  --help, -h               Display usage message
+  --debug, -d              Debug mode
+  --notify, -n ADDRESS     Email address to send notifications to
+
+UNSTABLE-BRANCH can be any branch (including an sftp: or http: branch)
+but it must exist.  STABLE-BRANCH should be in the current directory
+(and will be created if it doesn't exist).
+
+This program will update STABLE-BRANCH to be the latest working revision
+of UNSTABLE-BRANCH.  Working means that it builds and runs 'make check'
+successfully.
+";
+        exit(0);
+    } elsif($opt eq '-d' or $opt eq '--debug') {
+        $debug = 1;
+    } elsif($opt eq '-n' or $opt eq '--notify') {
+        $notify = shift;
+    } else {
+        die "$0: unknown option '$opt'\n";
+    }
+}
+
+if(scalar @ARGV != 2) {
+    die "$0: You must specify a pair of branches.\n";
+}
+
+my $unstable = shift;
+my $stable = shift;
+
+# The stable branch must either not exist yet or be a Bazaar branch
+if(-e $stable and !-d "$stable/.bzr") {
+    die "$0: $stable/.bzr does not exist\n";
+}
+
+# Take out a lock
+my $lockfile = "$stable.lock";
+my $locktmp = "$lockfile.$$";
+(open(LOCK, ">$locktmp")
+ and print LOCK "$$\n"
+ and close LOCK)
+    or die "$0: $locktmp: $!\n";
+link($locktmp, $lockfile)
+    or die "$0: $lockfile: $!\n";
+unlink($locktmp);
+
+# Do the real work inside a fork so we can reliably remove the lock on exit
+my $pid = fork;
+die "$0: fork: $!\n" unless defined $pid;
+if($pid > 0) {
+    # parent
+    my $st = waitpid($pid, 0);
+    unlink($lockfile);
+    exit $st;
+}
+
+# child
+
+# Find what revisions the branches are at
+# The unstable branch may be updated just after get its revno, in which
+# case we won't see subsequent changes.  The stable branch hopeful we
+# are sole owners of!
+my $unstablehead = tip($unstable);
+my $unstablerev = $unstablehead;
+my $stablerev = -d $stable ? tip($stable) : 0;
+
+# Quit immediately if there's nothing to do
+exit 0 if $unstablerev == $stablerev;
+
+my $workdir = POSIX::getcwd();
+
+# Redirect output to a logfile
+open(STDOUT, ">$stable.log") or die "$0: $stable.log: $!\n";
+open(STDERR, ">&STDOUT") or die "$0: redirecting stderr: $!\n";
+
+while($unstablerev > $stablerev) {
+    # Get back to the right place
+    cd($workdir);
+
+    # Create a fresh work branch
+    cmd("rm", "-rf", "workbranch") 
+        and die;
+    cmd("bzr", "clone", "-q", "-r$unstablerev", $unstable, "workbranch")
+        and die;
+    
+    # Try to build and check
+    cd("workbranch");
+    
+    if(-e "prepare") {
+        if(cmd("./prepare")) {
+            --$unstablerev;
+            next;
+        }
+    }
+    if(-e "configure") {
+        if(cmd("./configure")) {
+            --$unstablerev;
+            next;
+        }
+    }
+    if(cmd("make")) {
+        --$unstablerev;
+        next;
+    }
+    if(cmd("make", "check")) {
+        --$unstablerev;
+        next;
+    }
+    # Success!
+    last;
+}
+
+if($unstablerev > $stablerev) {
+    # This one succeeded
+    if($stablerev == 0) {
+        # First time - clone the unstable branch
+        cd($workdir);
+        cmd("bzr", "clone", "-q", "-r$unstablerev", $unstable, $stable)
+            and die;
+    } else {
+        # Stable branch already exists, pull from the unstable branch
+        if($stable =~ m,^/,) {
+            # Absolute path to stable branch
+            cd($stable);
+        } else {
+            # Relative path to stable branch - make sure to go via workdir
+            cd("$workdir/$stable");
+        }
+        if($unstable =~ m,^/,
+           or $unstable =~ m,^[a-zA-Z][a-zA-Z0-9+\-\.]*://,) {
+            # Absolute path to unstable branch
+            cmd("bzr", "pull", "-q", "-r$unstablerev", $unstable)
+                and die;
+        } else  {
+            # Relative path - better add workdir
+            cmd("bzr", "pull", "-q", "-r$unstablerev", "$workdir/$unstable")
+                and die;
+        }
+    }
+}
+
+my $msg;
+if($unstablerev == $unstablehead) {
+    # We updated to the head revision
+    $msg = "$unstable:$unstablehead is OK";
+} elsif($unstablerev > $stablerev) {
+    # We updated a bit but not to the head
+    $msg = "$unstable:$unstablehead failed (but $unstablerev is OK)";
+} else {
+    # Nothing worked
+    $msg = "$unstable:$unstablehead failed";
+}
+
+if(defined $msg) {
+    if(defined $notify) {
+        open(MAIL, "|/usr/sbin/sendmail -odb -oee \Q$notify\E") 
+            or die "$0: opening sendmail: $!\n";
+        print MAIL "To: <$notify>
+Subject: $msg
+
+$msg
+";
+        close MAIL;
+    } else {
+        print "$msg\n";
+    }
+}
