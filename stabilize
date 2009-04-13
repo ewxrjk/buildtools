@@ -101,7 +101,16 @@ my $unstablerev = $unstablehead;
 my $stablerev = -d $stable ? tip($stable) : 0;
 
 # Quit immediately if there's nothing to do
-exit 0 if $unstablerev == $stablerev;
+exit 0 if $unstablehead == $stablerev;
+
+# If we've already checked against unstablehead then we quit
+if(-e "$stable.last") {
+    open(LAST, "<$stable.last") or die "$0: $stable.last: $!\n";
+    my $last = <LAST>;
+    $last = int $last;
+    close LAST;
+    exit 0 if $last == $unstablehead;
+}
 
 my $workdir = POSIX::getcwd();
 
@@ -201,3 +210,10 @@ $msg
         print "$msg\n";
     }
 }
+
+# Save the last-known revision
+(open(LAST, ">$stable.last.$$")
+ and (print LAST "$unstablehead\n")
+ and (close LAST)) or die "$0: $stable.last.$$: $!\n";
+rename("$stable.last.$$", "$stable.last")
+    or die "$0: $stable.last";
