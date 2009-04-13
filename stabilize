@@ -1,6 +1,119 @@
 #! /usr/bin/perl -w
+#
+# Copyright (C) 2009 Richard Kettlewell
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+# USA
+#
 use strict;
 use POSIX;
+
+=head1 NAME
+
+stabilize - maintain stable version of a Bazaar branch
+
+=head1 SYNSOPSIS
+
+B<stabilize> [I<OPTIONS>] I<UNSTABLE-BRANCH> I<STABLE-BRANCH>
+
+=head1 DESCRIPTION
+
+B<stabilize> updates I<STABLE-BRANCH> to the latest working revision
+of I<UNSTABLE-BRANCH>, optionally sending mail to report the outcome.
+
+I<UNSTABLE-BRANCH> can be anything, for instance a B<http:> URL.
+However it must exist.
+
+I<STABLE-BRANCH> need not exist but it must refer to the local
+filesystem.
+
+=head1 OPTIONS
+
+=over
+
+=item B<--notify> I<ADDRESS>
+
+Send email to I<ADDRESS> to report the outcome.
+
+=item B<--debug>
+
+Enable debug output.
+
+=item B<--help>
+
+Display usage message.
+
+=back
+
+=head1 BUILDING
+
+B<stabilize> performs the following steps when building:
+
+1) If there is a script called B<prepare> it runs it.  (The idea is
+that this script will generate B<configure>).  Additional names could
+be supported.
+
+2) If there is a script called B<configure> it runs it (without any
+arguments).
+
+3) It runs B<make>.
+
+4) It runs B<make check>.
+
+If any of these steps exit with nonzero status, the build is taken to
+have failed (and the remaining steps are not executed).
+
+=head1 FILES
+
+B<stabilize> creates various files in the current directory.
+
+=over
+
+=item B<workbranch>
+
+A fresh clone of I<UNSTABLE-BRANCH> for running test builds.
+
+=item I<STABLE-BRANCH>B<.log>
+
+A log file from the last run.
+
+=item I<STABLE-BRANCH>B<.last>
+
+The last revision of I<UNSTABLE-BRANCH> that was checked.
+
+=item I<STABLE-BRANCH>B<.lock>
+
+A lock file preventing concurrent runs of B<stabilize>.
+
+=back
+
+=head1 FUTURE DIRECTIONS
+
+We could support more styles of building and testing, and arrange to
+pass arguments to B<configure>.
+
+We could support more version control systems than Bazaar.
+
+We could support non-local I<STABLE-BRANCH> and push into it from the
+working branch.
+
+=head1 AUTHOR
+
+Richard Kettlewell <rjk@greenend.org.uk>
+
+=cut
 
 our $debug = 0;
 our $notify;
