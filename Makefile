@@ -24,24 +24,30 @@ mandir=${prefix}/share/man
 man1dir=${mandir}/man1
 INSTALL=install
 
-all: verify-perl run-builds.txt stabilize.1
+all: verify-perl polybuild.1 stabilize.1
 
 verify-perl:
-	perl -wc run-builds
+	perl -wc polybuild
 	perl -wc stabilize
 
 stabilize.1: stabilize
 	pod2man stabilize > stabilize.1
 
-run-builds.txt: run-builds
-	pod2text run-builds > run-builds.txt
+polybuild.1: polybuild
+	pod2man polybuild > polybuild.1
+
+clean:
+	rm -f stabilize.1
+	rm -f polybuild.1
 
 install:
 	$(INSTALL) -m 755 stabilize $(bindir)/stabilize
 	$(INSTALL) -m 644 stabilize.1 $(man1dir)/stabilize.1
+	$(INSTALL) -m 755 polybuild $(bindir)/polybuild
+	$(INSTALL) -m 644 polybuild.1 $(man1dir)/polybuild.1
 
 uninstall:
 	rm -f $(bindir)/stabilize
 	rm -f $(man1dir)/stabilize.1
-
-.PHONY: run-builds
+	rm -f $(bindir)/polybuild
+	rm -f $(man1dir)/polybuild.1

@@ -1,11 +1,17 @@
-run-builds
-==========
+Build Tools
+===========
 
-This is a Perl script which builds a collection of different programs
-on multiple hosts.  Currently it can only build bzr branches, but it
-could be adapted to other VCSs if necessary.
+* polybuild
 
-Run 'make' to build run-builds.txt, the documentation, or just read
-the POD messages inside the script.
+This script builds a collection of different programs on multiple
+hosts.  Currently it can only build bzr branches, but it could be
+adapted to other VCSs if necessary.
+
+See polybuild.conf for an example configuration.
+
+* stabilize
+
+This script pushes changes from a 'development' branch to a 'stable'
+branch provided the branch continues to build.
 
 Please send feedback to Richard Kettlewell <rjk@greenend.org.uk>.
