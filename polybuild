@@ -614,7 +614,7 @@ for(;;) {
 	    ssh($host, "rm -rf \Q$w/$b\E");
 	    cmd("rsync", "-r", "$b", "$hosts{$host}->{hostname}:$w/.");
 	    # Start the build
-	    $hosts{$host}->{pid} = background("$host.$b.BUILD",
+	    $hosts{$host}->{pid} = background("$host.$b.BUILD.txt",
             sub {
 		# Figure out how to build the software.  It would be
 		# nice if we could put this logic into the config file
@@ -645,7 +645,7 @@ for(;;) {
 	    $branches{$b}->{status}->{$host} = 'building';
 	} else {
 	    # Start the check
-	    $hosts{$host}->{pid} = background("$host.$b.CHECK",
+	    $hosts{$host}->{pid} = background("$host.$b.CHECK.txt",
 	    sub {
 		return ssh($host, "$env cd \Q$w/$b\E && $hosts{$host}->{make} check");
 	    });
@@ -754,13 +754,13 @@ sub make_html($) {
 	    my $checkstate = 'unready';
 
 	    if($s =~ /^build/) {
-		$buildlog = "$host.$branch.BUILD";
+		$buildlog = "$host.$branch.BUILD.txt";
 		$buildstate = $s;
 	    }
 	    if($s =~ /^check/) {
-		$buildlog = "$host.$branch.BUILD";
+		$buildlog = "$host.$branch.BUILD.txt";
 		$buildstate = 'buildok';
-		$checklog = "$host.$branch.CHECK";
+		$checklog = "$host.$branch.CHECK.txt";
 		$checkstate = $s;
 	    }
 	    if(defined $buildlog) {
