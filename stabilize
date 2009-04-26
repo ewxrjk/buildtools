@@ -189,8 +189,10 @@ my $locktmp = "$lockfile.$$";
  and print LOCK "$$\n"
  and close LOCK)
     or die "$0: $locktmp: $!\n";
-link($locktmp, $lockfile)
-    or die "$0: $lockfile: $!\n";
+if(!link($locktmp, $lockfile)) {
+    unlink($locktmp);
+    die "$0: $lockfile: $!\n";
+}
 unlink($locktmp);
 
 # Do the real work inside a fork so we can reliably remove the lock on exit
