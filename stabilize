@@ -327,8 +327,8 @@ $msg
 }
 
 # Save the last-known revision
-(open(LAST, ">$stable.last.$$")
+(open(LAST, ">$workdir/$stable.last.$$")
  and (print LAST "$unstablehead\n")
- and (close LAST)) or die "$0: $stable.last.$$: $!\n";
-rename("$stable.last.$$", "$stable.last")
+ and (close LAST)) or die "$0: $workdir/$stable.last.$$: $!\n";
+rename("$workdir/$stable.last.$$", "$workdir/$stable.last")
     or die "$0: $stable.last";
