@@ -697,7 +697,7 @@ if(defined $email) {
     }
     open(EMAIL, "|/usr/sbin/sendmail -oi -oee -odb -t")
       or die "ERROR: executing sendmail: $!\n";
-    print EMAIL "Subject: polybuild: $subject\n";
+    print EMAIL "Subject: polybuild:$subject\n";
     print EMAIL "To: $email\n";
     print EMAIL "Content-Type: text/html\n";
     print EMAIL "\n";
