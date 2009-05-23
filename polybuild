@@ -184,6 +184,12 @@ td.checkok {
   text-align: center;
   width: 2em
 }
+
+td.down {
+  background-color: #ff8000;
+  text-align: center;
+  width: 2em
+}
 ";
 
 # Parse command line
@@ -357,7 +363,7 @@ while(defined($_ = <CONF>)) {
 	$hosts{$host} = {
 	    'hostname' => $host,
 	    'work' => "_builds/$host",
-	    'active' => 0,
+	    'state' => 'inactive',
 	    'path' => [],
 	    'environ' => {},
 	    'make' => 'make',
@@ -401,7 +407,7 @@ while(defined($_ = <CONF>)) {
 	$branch = shift @l;
 	push(@branchorder, $branch) unless exists $branches{$branch};
 	$branches{$branch} = {
-	    'active' => 0,
+	    'state' => 'inactive',
 	};
     } elsif($cmd eq 'location') {
 	die "$config:$line: 'location' outside 'define-branch'\n"
@@ -437,10 +443,10 @@ my $included_hosts = 0;
 my $included_branches = 0;
 for my $hb (@include) {
     if(exists $hosts{$hb}) {
-	$hosts{$hb}->{active} = 1;
+	$hosts{$hb}->{state} = 'active';
 	$included_hosts = 1;
     } elsif(exists $branches{$hb}) {
-	$branches{$hb}->{active} = 1;
+	$branches{$hb}->{state} = 'active';
 	$included_branches = 1;
     } else {
 	die "ERROR: '$hb' is neither a host nor a branch\n";
@@ -450,21 +456,21 @@ for my $hb (@include) {
 # If no hosts (branches) were explicitly included then we activate all of them.
 if(!$included_hosts) {
     for my $host (keys %hosts) {
-	$hosts{$host}->{active} = 1;
+	$hosts{$host}->{state} = 'active';
     }
 }
 if(!$included_branches) {
     for my $branch (keys %branches) {
-	$branches{$branch}->{active} = 1;
+	$branches{$branch}->{state} = 'active';
     }
 }
 
 # We apply any explicit exclusions last (trumping all of the above).
 for my $hb (@exclude) {
     if(exists $hosts{$hb}) {
-	$hosts{$hb}->{active} = 0;
+	$hosts{$hb}->{state} = 'inactive';
     } elsif(exists $branches{$hb}) {
-	$branches{$hb}->{active} = 0;
+	$branches{$hb}->{state} = 'inactive';
     } else {
 	die "ERROR: '$hb' is neither a host nor a branch\n";
     }
@@ -479,16 +485,17 @@ if(!-d $workdir) {
 
 # Attempt to create remote work directories
 for my $host (keys %hosts) {
-    next unless $hosts{$host}->{active};
+    next unless $hosts{$host}->{state} eq 'active';
     if(ssh($host, "mkdir -p -m0755 \Q$hosts{$host}->{work}\E")) {
-	$hosts{$host}->{active} = 0;
+        print STDERR "ERROR: marking host $host as down\n";
+	$hosts{$host}->{state} = 'down';
     }
 }
 
 # Check out source code
 my $failed = 0;
 for my $branch (keys %branches) {
-    next unless $branches{$branch}->{active};
+    next unless $branches{$branch}->{state} eq 'active';
     # Remove any old version
     cmd("rm", "-rf", $branch) if -e "$workdir/$branch";
     # Check out the latest version
@@ -508,12 +515,85 @@ exit 1 if $failed;
 #  checkok     - checked OK
 #  checkfail   - failed to check
 for my $branch (keys %branches) {
-    next unless $branches{$branch}->{active};
+    next unless $branches{$branch}->{state} eq 'active';
     $branches{$branch}->{status} = {};
     for my $host (keys %hosts) {
 	$branches{$branch}->{status}->{$host} = "unbuilt";
     }
 }
+
+=head1 THE REPORT
+
+The report is saved in a file during builds, and optionally emailed on
+completion.  While the build is going a refresh is set so that the
+report remains up to date (in most browsers).
+
+Each row corresponds to a branch.  Each top-level column corresponds
+to a host, with the hostname, OS platform and OS version given.  Below
+this the column is divided in two, the left one for building and the
+right one for checking.
+
+The symbols in the report have the following meanings:
+
+=over 8
+
+=item B<b...>
+
+Currently building.
+
+=item B<B>
+
+Build failed.
+
+=item B<c...>
+
+Currently testing.
+
+=item B<C>
+
+Testing failed.
+
+=item B<:)>
+
+Build or check completed OK.
+
+=item B<D>
+
+Host is down.
+
+=item B<?>
+
+Not yet started.
+
+=back
+
+Each cell's color also indicates what's going on:
+
+=over 8
+
+=item green
+
+Completed OK.
+
+=item yellow
+
+Underway.
+
+=item red
+
+Failed.
+
+=item orange
+
+Host is down.
+
+=item grey
+
+Not yet started.
+
+=back
+
+=cut
 
 our %buildtextmap = (
     "unbuilt" => "?",
@@ -523,6 +603,7 @@ our %buildtextmap = (
     "checking" => ":)",
     "checkok" => ":)",
     "checkfail" => ":)",
+    "down" => "D",
 );
 
 our %checktextmap = (
@@ -533,6 +614,7 @@ our %checktextmap = (
     "checking" => "c...",
     "checkok" => ":)",
     "checkfail" => "C",
+    "down" => "D",
 );
 
 # Create the host status array.  Possible status are:
@@ -576,7 +658,7 @@ for(;;) {
     my $working = 0;		# count of working hosts
     my $idle = 0;		# count of idle hosts
     for my $host (keys %hosts) {
-	next unless $hosts{$host}->{active};
+	next unless $hosts{$host}->{state} eq 'active';
 	if($hosts{$host}->{status} eq 'working') {
 	    my $group = $hosts{$host}->{group};
 	    ++$group_jobs{$group};
@@ -592,14 +674,14 @@ for(;;) {
     }
     # For each idle host look for some work to do
     for my $host (keys %hosts) {
-	next unless $hosts{$host}->{active};
+	next unless $hosts{$host}->{state} eq 'active';
 	next unless $hosts{$host}->{status} eq 'idle';
 	my $group = $hosts{$host}->{group};
 	next if $group_jobs{$group} >= $group_limit{$group};
 	my $b;
 	# Look for some work for this host to do
 	for my $branch (keys %branches) {
-	    next unless $branches{$branch}->{active};
+	    next unless $branches{$branch}->{state} eq 'active';
 	    my $s = $branches{$branch}->{status}->{$host};
 	    if($s eq 'unbuilt' or $s eq 'buildok') {
 		$b = $branch;
@@ -684,11 +766,14 @@ make_html(0);
 if(defined $email) {
     my %results = ();
     for my $host (keys %hosts) {
-        next unless $hosts{$host}->{active};
-	for my $branch (keys %branches) {
-	    next unless $branches{$branch}->{active};
-            my $s = $branches{$branch}->{status}->{$host};
-            ++$results{$s};
+        if($hosts{$host}->{state} eq 'active') {
+            for my $branch (keys %branches) {
+                next unless $branches{$branch}->{state} eq 'active';
+                my $s = $branches{$branch}->{status}->{$host};
+                ++$results{$s};
+            }
+        } elsif($hosts{$host}->{state} eq 'down') {
+            ++$results{down};
         }
     }
     my $subject = "";
@@ -739,7 +824,7 @@ sub genmail {
     push(@html, "  </colgroup>\n");
     my $id = 0;
     for my $host (@hostorder) {
-	next unless $hosts{$host}->{active};
+	next if $hosts{$host}->{state} eq 'inactive';
 	push(@html, "  <colgroup id=results$id class=results>\n");
 	push(@html, "   <col class=build>\n");
 	push(@html, "   <col class=check>\n");
@@ -753,7 +838,7 @@ sub genmail {
 
     $id = 0;
     for my $host (@hostorder) {
-	next unless $hosts{$host}->{active};
+	next if $hosts{$host}->{state} eq 'inactive';
 	push(@html, "    <th id=host$id colspan=2 class=host>$host\n");
 	++$id;
     }
@@ -763,7 +848,7 @@ sub genmail {
 
     $id = 0;
     for my $host (@hostorder) {
-	next unless $hosts{$host}->{active};
+	next if $hosts{$host}->{state} eq 'inactive';
 	if($hosts{$host}->{os} =~ /-/) {
 	    push(@html, "    <th id=os$id colspan=2 class=os>$`\n");
 	} else {
@@ -777,7 +862,7 @@ sub genmail {
 
     $id = 0;
     for my $host (@hostorder) {
-	next unless $hosts{$host}->{active};
+	next if $hosts{$host}->{state} eq 'inactive';
 	if($hosts{$host}->{os} =~ /-/) {
 	    push(@html, "    <th id=osver$id colspan=2 class=osver>$'\n");
 	} else {
@@ -790,14 +875,17 @@ sub genmail {
 
     $id = 0;
     for my $branch (@branchorder) {
-	next unless $branches{$branch}->{active};
+	next if $branches{$branch}->{state} eq 'inactive';
 	push(@html, "   <tr class=results>\n");
 	push(@html, "    <th id=branch$id class=branch>$branch\n");
 	my $hid = 0;
 	for my $host (@hostorder) {
-	    next unless $hosts{$host}->{active};
+	    next if $hosts{$host}->{state} eq 'inactive';
 	    my $s = $branches{$branch}->{status}->{$host};
 
+            if($hosts{$host}->{state} eq 'down') {
+                $s = 'down';
+            }
 	    my $buildlog;
 	    my $buildstate = 'unbuilt';
 	    my $checklog;
@@ -813,6 +901,10 @@ sub genmail {
 		$checklog = "$host.$branch.CHECK.txt";
 		$checkstate = $s;
 	    }
+            if($s eq 'down') {
+                $buildstate = 'down';
+                $checkstate = 'down';
+            }
 	    if(defined $buildlog) {
 		push(@html, "    <td id=build$hid class=$buildstate>\n");
 		push(@html, "     <a href=\"$workdir/$buildlog\" title=\"Build log\">\n");
