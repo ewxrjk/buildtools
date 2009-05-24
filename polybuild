@@ -149,6 +149,12 @@ td.unready {
   width: 2em
 }
 
+td.suppressed {
+  background-color: #c0c0c0;
+  text-align: center;
+  width: 2em
+}
+
 td.building {
   background-color: #ffff80;
   text-align: center;
@@ -249,6 +255,10 @@ this might be changed).
 Defines the local work directory.  The default is B<_builds/_master>.
 This will contain working trees and build logs.
 
+=item B<suppress> HOST BRANCH
+
+Suppress builds on a particular host/branch combination.
+
 =back
 
 =head2 Host Stanzas
@@ -337,6 +347,7 @@ our @branchorder = ();
 our %defines = ();
 our %globalenv = ();
 our %group_limit = ();
+our @suppress = ();
 open(CONF,  "<$config") or die "ERROR: reading $config: $!\n";
 while(defined($_ = <CONF>)) {
     ++$line;
@@ -423,6 +434,10 @@ while(defined($_ = <CONF>)) {
 	$globalenv{$k} = $v;
     } elsif($cmd eq 'local-work') {
 	$workdir = shift @l;
+    } elsif($cmd eq 'suppress') {
+        my $shost = shift @l;
+        my $sbranch = shift @l;
+        push(@suppress, [$shost, $sbranch]);;
     } else {
 	die "$config:$line: unknown verb '$cmd'\n";
     }
@@ -522,6 +537,12 @@ for my $branch (keys %branches) {
     }
 }
 
+# Apply suppressions
+for my $hb (@suppress) {
+    my ($host, $branch) = @$hb;
+    $branches{$branch}->{status}->{$host} = "suppressed";
+}
+
 =head1 THE REPORT
 
 The report is saved in a file during builds, and optionally emailed on
@@ -561,6 +582,10 @@ Build or check completed OK.
 
 Host is down.
 
+=item B<S>
+
+Host/branch is suppressed.
+
 =item B<?>
 
 Not yet started.
@@ -589,7 +614,7 @@ Host is down.
 
 =item grey
 
-Not yet started.
+Not yet started, or suppressed.
 
 =back
 
@@ -604,6 +629,7 @@ our %buildtextmap = (
     "checkok" => ":)",
     "checkfail" => ":)",
     "down" => "D",
+    "suppressed" => "S",
 );
 
 our %checktextmap = (
@@ -615,6 +641,7 @@ our %checktextmap = (
     "checkok" => ":)",
     "checkfail" => "C",
     "down" => "D",
+    "suppressed" => "S",
 );
 
 # Create the host status array.  Possible status are:
