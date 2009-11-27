@@ -81,6 +81,8 @@ then all hosts are used.
 
 sub ssh($$);
 sub make_html($);
+sub parse_line($$);
+sub expand_environment($$);
 
 my $css = "body {
   color: black;
@@ -229,6 +231,9 @@ illustrate the grouping but this is not enforced.
 
 Blank lines and lines starting "#" are ignored.
 
+Argument values may be quoted using double quotes.
+Within double quotes, a backslash escapes any character.
+
 Strings of the form B<${...}> in the configuration file are expanded
 using macro definitions or environment variables.
 
@@ -352,18 +357,11 @@ open(CONF,  "<$config") or die "ERROR: reading $config: $!\n";
 while(defined($_ = <CONF>)) {
     ++$line;
     next if /^\#/ or !/\S/;	# skip blank and comment lines
-    while(/\${([a-z0-9_]+)}/i) {
-	my $k = $1;
-	my $v = ($defines{$k} or $ENV{$k});
-	if(!defined $v) {
-	    die "$config:$line: unknown definition '$k'\n";
-	}
-	s/\${$k}/$v/g;
-    }
     s/^\s+//;
     s/\s+$//;
-    my @l = split(/\s+/, $_);
+    my @l = parse_line($_, "$config:$line");
     my $cmd = shift @l;
+    @l = map(expand_environment($_, "$config:$line"), @l);
     if($cmd =~ /^define/) {
 	undef $host;
 	undef $branch;
@@ -1004,6 +1002,49 @@ sub background {
 	POSIX::_exit(&$cmd(@_) ? 1 : 0);
     }
     return $pid;
+}
+
+# parse_line(LINE) - return LINE broken into a list
+sub parse_line($$) {
+  local $_ = shift;
+  my $where = shift;
+  print "\n";
+  print "$_\n";
+  my @l = ();
+  while($_ ne '') {
+    if(/^\s+/) {
+      $_ = $';
+      next;
+    }
+    if(/^"((\\.|[^\\\"])*)"/) {
+      my $content = $1;
+      $_ = $';
+      $content =~ s/\\(.)/$1/g;
+      push(@l, $content);
+    } elsif(/^"/) {
+      die "$where: malformed string literal\n";
+    } elsif(/^[^"\s]+/) {
+      push(@l, $&);
+      $_ = $';
+    }
+  }
+  print map("$_\n", @l);
+  return @l;
+}
+
+# Expand environment variables in a string
+sub expand_environment($$) {
+  local $_ = shift;
+  my $where = shift;
+  while(/\${([a-z0-9_]+)}/i) {
+    my $k = $1;
+    my $v = ($defines{$k} or $ENV{$k});
+    if(!defined $v) {
+      die "$where: unknown definition '$k'\n";
+    }
+    s/\${$k}/$v/g;
+  }
+  return $_;
 }
 
 # Local Variables:
