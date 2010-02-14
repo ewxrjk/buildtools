@@ -264,6 +264,9 @@ This will contain working trees and build logs.
 
 Suppress builds on a particular host/branch combination.
 
+HOST and BRANCH are regexps, implicitly anchored to the ends of the
+string.
+
 =back
 
 =head2 Host Stanzas
@@ -512,7 +515,7 @@ for my $branch (keys %branches) {
     # Remove any old version
     cmd("rm", "-rf", $branch) if -e "$workdir/$branch";
     # Check out the latest version
-    if(cmd("bzr", "clone", "-q", $branches{$branch}->{location}, $branch)) {
+    if(cmd("bzr", "clone", "--hardlink", "-q", $branches{$branch}->{location}, $branch)) {
 	print STDERR "ERROR: cannot get source code for $branch\n";
 	$failed++;
     }
@@ -537,8 +540,15 @@ for my $branch (keys %branches) {
 
 # Apply suppressions
 for my $hb (@suppress) {
-    my ($host, $branch) = @$hb;
-    $branches{$branch}->{status}->{$host} = "suppressed";
+    my ($shost, $sbranch) = @$hb;
+    for my $branch (keys %branches) {
+        for $host (keys %hosts) {
+            if($host =~ /^($shost)$/
+               and $branch =~ /^($sbranch)$/) {
+                $branches{$branch}->{status}->{$host} = "suppressed";
+            }
+        }
+    }
 }
 
 =head1 THE REPORT
@@ -1012,8 +1022,6 @@ sub background {
 sub parse_line($$) {
   local $_ = shift;
   my $where = shift;
-  print "\n";
-  print "$_\n";
   my @l = ();
   while($_ ne '') {
     if(/^\s+/) {
@@ -1032,7 +1040,6 @@ sub parse_line($$) {
       $_ = $';
     }
   }
-  print map("$_\n", @l);
   return @l;
 }
 
@@ -1053,4 +1060,5 @@ sub expand_environment($$) {
 
 # Local Variables:
 # cperl-indent-level:4
+# perl-indent-level:4
 # End:
