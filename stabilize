@@ -61,9 +61,8 @@ Display usage message.
 
 B<stabilize> performs the following steps when building:
 
-1) If there is a script called B<prepare> it runs it.  (The idea is
-that this script will generate B<configure>).  Additional names could
-be supported.
+1) If there is a script called B<prepare> or B<autogen.sh> it runs it.
+(The idea is that this script will generate B<configure>).
 
 2) If there is a script called B<configure> it runs it (without any
 arguments).
@@ -248,6 +247,11 @@ while($unstablerev > $stablerev) {
     
     if(-e "prepare") {
         if(cmd("./prepare")) {
+            --$unstablerev;
+            next;
+        }
+    } elsif(-e "autogen.sh") {
+        if(cmd("./autogen.sh")) {
             --$unstablerev;
             next;
         }

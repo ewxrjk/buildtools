@@ -750,9 +750,13 @@ for(;;) {
 		    return ssh($host,
 			       "$env cd \Q$w/$b\E && debian/rules build && fakeroot debian/rules binary");
 		}
-		# If there's a prepare we run that and then configure
+		# If there's an autogen.sh we run that and then configure
 		# before doing the make
-		if(-e "$workdir/$b/prepare") {
+		if(-e "$workdir/$b/autogen.sh") {
+		    return ssh($host,
+			       "$env cd \Q$w/$b\E && bash ./autogen.sh && ./configure && $hosts{$host}->{make}");
+		} elsif(-e "$workdir/$b/prepare") {
+                    # Some of my old code uses 'prepare' instead
 		    return ssh($host,
 			       "$env cd \Q$w/$b\E && bash ./prepare && ./configure && $hosts{$host}->{make}");
 		}
