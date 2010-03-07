@@ -63,6 +63,10 @@ Unless you use B<--base>, the logfile links in the email won't work.
 
 Base URL for logfiles in emailed report.
 
+=item B<--help>
+
+Display usage message.
+
 =back
 
 Branches and hosts are selected as follows:
@@ -215,6 +219,23 @@ while(@ARGV > 0 and $ARGV[0] =~ /^-/) {
         $base = shift @ARGV;
     } elsif($_ eq '--exclude') {
 	push(@exclude, shift @ARGV);
+    } elsif($_ eq '--help') {
+        print <<EOF;
+Usage:
+  polybuild [OPTIONS...] [BRANCH|HOST...]
+
+Options:
+  --config PATH                 Path to configuration file ./polybuild.conf)
+  --exclude BRANCH|HOST         Suppress a branch or host
+  --email ADDRESS               Email report to this address
+  --base URL                    Base URL for links in logfile
+  --help                        Display usage message
+
+If any branches are specified on the command line then only those branches
+are built; otherwise all branches are built.  The same applies to hosts.
+--exclude overrides all of the above.
+EOF
+          exit 0;
     } else {
 	die "ERROR: unknown option '$_'\n";
     }
