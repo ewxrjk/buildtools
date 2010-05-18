@@ -700,7 +700,8 @@ for(;;) {
 		if($?) {
 		    $branches{$branch}->{status}->{$host} = 'checkfail';
 		} else {
-		   $branches{$branch}->{status}->{$host}  = 'checkok';
+		    $branches{$branch}->{status}->{$host}  = 'checkok';
+	            ssh($host, "rm -rf \Q$hosts{$host}->{work}/$branch\E");
 		}
 	    }
 	    # ...and the host status
