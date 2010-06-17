@@ -815,15 +815,15 @@ for(;;) {
 		} elsif(-e "$workdir/$b/prepare") {
                     # Some of my old code uses 'prepare' instead
 		    return ssh($host,
-			       "$env cd \Q$w/$b\E && bash ./prepare && ./configure && $hosts{$host}->{make}");
+			       "$env cd \Q$w/$b\E && bash ./prepare && $scanner ./configure && $scanner $hosts{$host}->{make}");
 		}
 		# If there's a configure we run that before doing the make
 		if(-e "$workdir/$b/configure") {
 		    return ssh($host,
-			       "$env cd \Q$w/$b\E && ./configure && $hosts{$host}->{make}");
+			       "$env cd \Q$w/$b\E && $scanner ./configure && $scanner $hosts{$host}->{make}");
 		}
 		# Hopefuly there is at least a makefile
-		return ssh($host, "$env cd \Q$w/$b\E && $hosts{$host}->{make}");
+		return ssh($host, "$env cd \Q$w/$b\E && $scanner $hosts{$host}->{make}");
 	    });
 	    $branches{$b}->{status}->{$host} = 'building';
 	} else {
