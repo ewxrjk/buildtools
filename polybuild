@@ -350,6 +350,11 @@ specify B<gmake> on a system with an inadequate native version.
 Defines the static analyzer to use on this host.  For instance you
 might use "scan-build -o scans" to use the Clang static analyzer.
 
+=item B<clean> B<yes>|B<no>
+
+If set to B<yes> (the default) then build trees are removed on
+success.  If set to B<no> then they are not.
+
 =back
 
 =head2 Branch Stanzas
@@ -406,6 +411,7 @@ while(defined($_ = <CONF>)) {
 	    'environ' => {},
 	    'make' => 'make',
 	    'group' => $host,
+            'clean' => 'yes',
 	    };
     } elsif($cmd eq 'hostname') {
 	die "$config:$line: 'hostname' outside 'define-host'\n"
@@ -445,6 +451,10 @@ while(defined($_ = <CONF>)) {
 	die "$config:$line: 'scanner' outside 'define-host'\n"
 	    unless defined $host;
 	$hosts{$host}->{scanner} = shift @l;
+    } elsif($cmd eq 'clean') {
+	die "$config:$line: 'clean' outside 'define-host'\n"
+	    unless defined $host;
+	$hosts{$host}->{clean} = shift @l;
     } elsif($cmd eq 'define-branch') {
 	$branch = shift @l;
 	push(@branchorder, $branch) unless exists $branches{$branch};
@@ -710,7 +720,9 @@ for(;;) {
 		    $branches{$branch}->{status}->{$host} = 'checkfail';
 		} else {
 		    $branches{$branch}->{status}->{$host}  = 'checkok';
-	            ssh($host, "rm -rf \Q$hosts{$host}->{work}/$branch\E");
+                    if($hosts{$host}->{clean} eq 'yes') {
+                        ssh($host, "rm -rf \Q$hosts{$host}->{work}/$branch\E");
+                    }
 		}
 	    }
 	    # ...and the host status
