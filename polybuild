@@ -345,6 +345,11 @@ Adds a value to the environment on this host.
 Defines the name of B<make> on this host.  For instance you might
 specify B<gmake> on a system with an inadequate native version.
 
+=item B<scanner> COMMAND
+
+Defines the static analyzer to use on this host.  For instance you
+might use "scan-build -o scans" to use the Clang static analyzer.
+
 =back
 
 =head2 Branch Stanzas
@@ -436,6 +441,10 @@ while(defined($_ = <CONF>)) {
 	die "$config:$line: 'make' outside 'define-host'\n"
 	    unless defined $host;
 	$hosts{$host}->{make} = shift @l;
+    } elsif($cmd eq 'scanner') {
+	die "$config:$line: 'scanner' outside 'define-host'\n"
+	    unless defined $host;
+	$hosts{$host}->{scanner} = shift @l;
     } elsif($cmd eq 'define-branch') {
 	$branch = shift @l;
 	push(@branchorder, $branch) unless exists $branches{$branch};
@@ -765,6 +774,10 @@ for(;;) {
 	    # in the background too but for now we do it synchronously;
 	    # it's probably not actually going to be a large proportion
 	    # of the build time.
+            my $scanner = "";
+            if(exists $hosts{$host}->{scanner}) {
+              $scanner = "$hosts{$host}->{scanner} ";
+            }
 	    ssh($host, "rm -rf \Q$w/$b\E");
 	    cmd("rsync", "-r", "$b", "$hosts{$host}->{hostname}:$w/.");
 	    # Start the build
@@ -780,13 +793,13 @@ for(;;) {
 		if(-d "$workdir/$b/debian"
 		   and ($hosts{$host}->{os} =~ /^(debian|ubuntu)/i)) {
 		    return ssh($host,
-			       "$env cd \Q$w/$b\E && debian/rules build && fakeroot debian/rules binary");
+			       "$env cd \Q$w/$b\E && $scanner debian/rules build && fakeroot debian/rules binary");
 		}
 		# If there's an autogen.sh we run that and then configure
 		# before doing the make
 		if(-e "$workdir/$b/autogen.sh") {
 		    return ssh($host,
-			       "$env cd \Q$w/$b\E && bash ./autogen.sh && ./configure && $hosts{$host}->{make}");
+			       "$env cd \Q$w/$b\E && bash ./autogen.sh && $scanner ./configure && $scanner $hosts{$host}->{make}");
 		} elsif(-e "$workdir/$b/prepare") {
                     # Some of my old code uses 'prepare' instead
 		    return ssh($host,
