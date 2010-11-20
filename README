@@ -4,8 +4,8 @@ Build Tools
 * polybuild
 
 This script builds a collection of different programs on multiple
-hosts.  Currently it can only build bzr branches, but it could be
-adapted to other VCSs if necessary.
+hosts.  Currently it can only build bzr and git branches, but it could
+be adapted to other VCSs if necessary.
 
 See polybuild.conf for an example configuration.
 
