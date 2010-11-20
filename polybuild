@@ -20,6 +20,7 @@
 
 use strict;
 use POSIX;
+use Cwd;
 
 =head1 NAME
 
@@ -35,7 +36,7 @@ This program uses SSH to connect to multiple hosts to retrieve chosen
 software packages, referred to as I<branches> from version control and
 build and test them.
 
-At present only B<bzr> is supported.
+At present only B<bzr> and B<git> are supported.
 
 While it runs, an B<index.html> file is written out showing current
 status and with hyperlinks to build logs.
@@ -364,10 +365,19 @@ per-branch directives.  B<location> is mandatory.
 
 =over
 
+=item B<type> TYPE
+
+Defines the branch type.  This can be B<git> or B<bzr>.  If it is not
+set then B<polybuild> will attempt to guess from the location.
+
 =item B<location> LOCATION
 
-Defines the branch to clone.  This can be anything acceptable to
-B<bzr>.
+Defines the repository to clone.  This can be anything acceptable to
+B<bzr> or B<git>.
+
+=item B<checkout> BRANCH
+
+Defines the sub-branch to switch to.  This is only useful with B<git>.
 
 =back
 
@@ -465,6 +475,17 @@ while(defined($_ = <CONF>)) {
 	die "$config:$line: 'location' outside 'define-branch'\n"
 	    unless defined $branch;
 	$branches{$branch}->{location} = shift @l;
+    } elsif($cmd eq 'type') {
+	die "$config:$line: 'type' outside 'define-branch'\n"
+	    unless defined $branch;
+        my $type = shift @l;
+        die "$config:$line: unknown branch type '$type'\n"
+          unless $type eq 'bzr' or $type eq 'git';
+	$branches{$branch}->{type} = $type;
+    } elsif($cmd eq 'branch') {
+	die "$config:$line: 'branch' outside 'define-branch'\n"
+	    unless defined $branch;
+	$branches{$branch}->{branch} = shift @l;
     } elsif($cmd eq 'define') {
 	my $k = shift @l;
 	my $v = shift @l;
@@ -478,12 +499,24 @@ while(defined($_ = <CONF>)) {
     } elsif($cmd eq 'suppress') {
         my $shost = shift @l;
         my $sbranch = shift @l;
-        push(@suppress, [$shost, $sbranch]);;
+        push(@suppress, [$shost, $sbranch]);
     } else {
 	die "$config:$line: unknown verb '$cmd'\n";
     }
 }
 close CONF;
+
+# Guess branch types where not stated
+for my $branch (keys %branches) {
+    next if exists $branches{$branch}->{type};
+    die "ERROR: branch '${branch}' has no location"
+      unless exists $branches{$branch}->{location};
+    if($branches{$branch}->{location} =~ /git|bzr/) {
+        $branches{$branch}->{type} = $&;
+    } else {
+        die "ERROR: cannot guess type for branch '{$branch}'\n";
+    }
+}
 
 # Set default group limits
 for my $host (keys %hosts) {
@@ -555,9 +588,23 @@ for my $branch (keys %branches) {
     # Remove any old version
     cmd("rm", "-rf", $branch) if -e "$workdir/$branch";
     # Check out the latest version
-    if(cmd("bzr", "clone", "--hardlink", "-q", $branches{$branch}->{location}, $branch)) {
-	print STDERR "ERROR: cannot get source code for $branch\n";
-	$failed++;
+    if($branches{$branch}->{type} eq 'bzr') {
+        if(cmd("bzr", "clone", "--hardlink", "-q", $branches{$branch}->{location}, $branch)) {
+            print STDERR "ERROR: cannot get source code for $branch\n";
+            $failed++;
+        }
+    } elsif($branches{$branch}->{type} eq 'git') {
+        if(cmd("git", "clone", "-q", $branches{$branch}->{location}, $branch)) {
+            print STDERR "ERROR: cannot get source code for $branch\n";
+            $failed++;
+        }
+        if(exists $branches{$branch}->{branch}) {
+            if(cmd("-chdir", "$workdir/$branch",
+                   "git", "checkout", "-q", $branches{$branch}->{branch})) {
+                print STDERR "ERROR: cannot checkout $branch branch $branches{$branch}->{branch}\n";
+                ++$failed;
+            }
+        }
     }
 }
 exit 1 if $failed;
@@ -1016,16 +1063,23 @@ sub genmail {
     return @html;
 }
 
-# cmd(PROG, ARG, ARG, ...) - execute command (NOT via the shell).  The
-# command is always execute in the working directory.
+# cmd([OPTIONS,] PROG, ARG, ARG, ...) - execute command (NOT via the shell).
+#
+# Options:
+#    -chdir DIR       change directory (default is $workdir)
 sub cmd {
+    my $dir = $workdir;
+    if($_[0] eq '-chdir') {
+        shift @_;
+        $dir = shift @_;
+    }
     print STDERR "EXEC: ", join(" ", @_), "\n";
     my $pid = fork();
     if(!defined $pid) {
 	die "ERROR: fork: $!\n";
     }
     if($pid == 0) {
-	chdir($workdir) or die "ERROR: chdir $workdir: $!\n";
+	chdir($dir) or die "ERROR: chdir $workdir: $!\n";
 	exec(@_);
 	die "ERROR: exec $_[0]: $!\n";
     }
