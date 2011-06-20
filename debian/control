@@ -1,0 +1,17 @@
+Source: rjk-build-tools
+Maintainer: Richard Kettlewell <rjk@greenend.org.uk>
+Section: devel
+Priority: extra
+Standards-Version: 3.8.1.0
+Build-Depends: perl
+
+Package: polybuild
+Architecture: all
+Section: devel
+Priority: extra
+Depends: perl
+Suggests: bzr,git,openssh-client
+Description: Build software on multiple hosts
+ This tool allows various pieces of software to be built on multiple
+ hosts, with a report generated and mailed out with the results.
+ Currently the subject software may be stored in bzr or git archives.

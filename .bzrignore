@@ -5,3 +5,6 @@ polybuild.1
 stabilize.1
 polybuild.log
 polybuild.log.old
+debian/files
+debian/polybuild
+*.tar.gz

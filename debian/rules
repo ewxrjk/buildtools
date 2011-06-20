@@ -1,0 +1,44 @@
+#! /usr/bin/make -f
+
+# Install commands.  You wouldn't normally override these.
+INSTALL=install
+INSTALL_DATA=$(INSTALL) -p -o root -g root -m 644
+INSTALL_PROGRAM=$(INSTALL) -p -o root -g root -m 755
+INSTALL_SCRIPT=$(INSTALL) -p -o root -g root -m 755
+MKDIR=mkdir -p -m 755
+
+export INSTALL_DATA
+export INSTALL_SCRIPT
+export INSTALL_PROGRAM
+
+SHELL=bash
+
+build:
+	$(MAKE)
+
+binary-polybuild: build
+	rm -rf debian/polybuild
+	$(MKDIR) debian/polybuild/DEBIAN
+	$(MKDIR) debian/polybuild/usr/bin
+	$(MKDIR) debian/polybuild/usr/share/man/man1
+	$(MKDIR) debian/polybuild/usr/share/doc/polybuild
+	$(INSTALL_DATA) debian/copyright debian/changelog README \
+		debian/polybuild/usr/share/doc/polybuild/.
+	gzip -9 debian/polybuild/usr/share/doc/polybuild/changelog*
+	$(INSTALL_PROGRAM) polybuild debian/polybuild/usr/bin/.
+	$(INSTALL_DATA) polybuild.1 debian/polybuild/usr/share/man/man1/.
+	gzip -9v debian/polybuild/usr/share/man/man*/*
+	cd debian/polybuild && \
+		find -name DEBIAN -prune -o -type f -print \
+			| sed 's/^\.\///' \
+			| xargs md5sum > DEBIAN/md5sums
+	dpkg-gencontrol -isp -ppolybuild -Pdebian/polybuild -Tdebian/substvars.polybuild
+	chown -R root:root debian/polybuild
+	chmod -R g-ws debian/polybuild
+	dpkg --build debian/polybuild ..
+
+binary: binary-polybuild
+
+clean:
+	make clean
+	rm -rf debian/polybuild

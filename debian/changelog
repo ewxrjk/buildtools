@@ -1,0 +1,6 @@
+rjk-build-tools (0.0) unstable; urgency=low
+
+  * Initial package scripts.
+
+ -- Richard Kettlewell <rjk@greenend.org.uk>  Mon, 20 Jun 2011 19:17:51 +0100
+

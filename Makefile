@@ -24,6 +24,9 @@ mandir=${prefix}/share/man
 man1dir=${mandir}/man1
 INSTALL=install
 
+PACKAGE=rjk-build-tools
+VERSION=0.0
+
 all: verify-perl polybuild.1 stabilize.1
 
 verify-perl:
@@ -51,3 +54,14 @@ uninstall:
 	rm -f $(man1dir)/stabilize.1
 	rm -f $(bindir)/polybuild
 	rm -f $(man1dir)/polybuild.1
+
+dist:
+	rm -rf $(PACKAGE)-$(VERSION)
+	mkdir -p $(PACKAGE)-$(VERSION)
+	mkdir -p $(PACKAGE)-$(VERSION)/debian
+	cp Makefile README polybuild stabilize polybuild.conf \
+		$(PACKAGE)-$(VERSION)
+	cp debian/control debian/changelog debian/copyright debian/rules \
+		$(PACKAGE)-$(VERSION)/debian
+	tar cfz $(PACKAGE)-$(VERSION).tar.gz $(PACKAGE)-$(VERSION)
+	rm -rf $(PACKAGE)-$(VERSION)
