@@ -20,7 +20,6 @@
 
 use strict;
 use POSIX;
-use Cwd;
 
 =head1 NAME
 
