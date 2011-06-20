@@ -1,0 +1,14 @@
+# Settings for polybuild
+
+# Set the user polybuild should run as.  If no user is specified it will
+# run as root.
+# USER=<username>
+
+# Directory to run polybuild in
+# DIR=<directory>
+
+# Base URL for logs
+BASE="http://$(uname -n)/polybuild"
+
+# Destination for email report
+EMAIL=root

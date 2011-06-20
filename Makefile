@@ -59,7 +59,7 @@ dist:
 	rm -rf $(PACKAGE)-$(VERSION)
 	mkdir -p $(PACKAGE)-$(VERSION)
 	mkdir -p $(PACKAGE)-$(VERSION)/debian
-	cp Makefile README polybuild stabilize polybuild.conf \
+	cp Makefile README polybuild stabilize polybuild.conf polybuild.cron polybuild.default \
 		$(PACKAGE)-$(VERSION)
 	cp debian/control debian/changelog debian/copyright debian/rules \
 		$(PACKAGE)-$(VERSION)/debian

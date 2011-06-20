@@ -1,0 +1,23 @@
+#! /bin/sh
+set -e
+if [ -e /etc/default/polybuild ]; then
+  .  /etc/default/polybuild
+fi
+if [ -e /etc/polybuild.conf ]; then
+  if [ x$DIR != x ]; then
+    cd $DIR
+  fi
+  if [ -e /var/log/polybuild ]; then
+    mv /var/log/polybuild /var/log/polybuild.old
+  fi
+  if [ x$EMAIL = x ]; then
+    EMAILARG=""
+  else
+    EMAILARG="--email $EMAIL"
+  fi
+  if [ x$USER = x ]; then
+    polybuild --base $BASE $EMAILARG
+  else
+    su -c "polybuild --base $BASE $EMAILARG" $USER >>/var/log/polybuild 2>&1
+  fi
+fi

@@ -47,7 +47,7 @@ status and with hyperlinks to build logs.
 =item B<--config> PATH
 
 Specifies the path to the configuration file.  The default is
-I<polybuild.conf> (in the current directory).
+I</etc/polybuild.conf>.
 
 =item B<--exclude> BRANCH|HOST
 
@@ -205,7 +205,7 @@ td.down {
 ";
 
 # Parse command line
-our $config = "polybuild.conf";
+our $config = "/etc/polybuild.conf";
 our @exclude = ();
 our $email;                     # report email address
 our $base;                      # report base URL
@@ -588,7 +588,7 @@ for my $branch (keys %branches) {
     cmd("rm", "-rf", $branch) if -e "$workdir/$branch";
     # Check out the latest version
     if($branches{$branch}->{type} eq 'bzr') {
-        if(cmd("bzr", "clone", "--hardlink", "-q", $branches{$branch}->{location}, $branch)) {
+        if(cmd("bzr", "clone", "-q", $branches{$branch}->{location}, $branch)) {
             print STDERR "ERROR: cannot get source code for $branch\n";
             $failed++;
         }

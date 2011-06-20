@@ -19,6 +19,9 @@ build:
 binary-polybuild: build
 	rm -rf debian/polybuild
 	$(MKDIR) debian/polybuild/DEBIAN
+	$(INSTALL_DATA) debian/conffiles.polybuild debian/polybuild/DEBIAN/conffiles
+	$(MKDIR) debian/polybuild/etc/cron.daily
+	$(MKDIR) debian/polybuild/etc/default
 	$(MKDIR) debian/polybuild/usr/bin
 	$(MKDIR) debian/polybuild/usr/share/man/man1
 	$(MKDIR) debian/polybuild/usr/share/doc/polybuild
@@ -27,6 +30,8 @@ binary-polybuild: build
 	gzip -9 debian/polybuild/usr/share/doc/polybuild/changelog*
 	$(INSTALL_PROGRAM) polybuild debian/polybuild/usr/bin/.
 	$(INSTALL_DATA) polybuild.1 debian/polybuild/usr/share/man/man1/.
+	$(INSTALL_DATA) polybuild.default debian/polybuild/etc/default/polybuild
+	$(INSTALL_SCRIPT) polybuild.cron debian/polybuild/etc/cron.daily/polybuild
 	gzip -9v debian/polybuild/usr/share/man/man*/*
 	cd debian/polybuild && \
 		find -name DEBIAN -prune -o -type f -print \
