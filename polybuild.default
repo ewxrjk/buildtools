@@ -8,7 +8,7 @@
 # DIR=<directory>
 
 # Base URL for logs
-BASE="http://$(uname -n)/polybuild"
+BASE="http://$(uname -n)/polybuild/"
 
 # Destination for email report
 EMAIL=root
