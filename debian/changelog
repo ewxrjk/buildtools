@@ -1,3 +1,9 @@
+rjk-build-tools (0.DEV) unstable; urgency=low
+
+  * This is the development branch.
+
+ -- Richard Kettlewell <rjk@greenend.org.uk>  Sat, 25 Jun 2011 10:35:53 +0100
+
 rjk-build-tools (0.0) unstable; urgency=low
 
   * Initial package scripts.
