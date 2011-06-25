@@ -65,3 +65,9 @@ dist:
 		$(PACKAGE)-$(VERSION)/debian
 	tar cfz $(PACKAGE)-$(VERSION).tar.gz $(PACKAGE)-$(VERSION)
 	rm -rf $(PACKAGE)-$(VERSION)
+
+version:
+	sed < polybuild > polybuild.new \
+		's/version =.*/version = "'$(VERSION)'";/'
+	chmod +x polybuild.new
+	mv polybuild.new polybuild

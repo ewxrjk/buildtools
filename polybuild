@@ -67,6 +67,10 @@ Base URL for logfiles in emailed report.
 
 Display usage message.
 
+=item B<--version>
+
+Display version number.
+
 =back
 
 Branches and hosts are selected as follows:
@@ -203,6 +207,7 @@ td.down {
   width: 2em
 }
 ";
+my $version = "0.DEV";
 
 # Parse command line
 our $config = "/etc/polybuild.conf";
@@ -235,7 +240,10 @@ If any branches are specified on the command line then only those branches
 are built; otherwise all branches are built.  The same applies to hosts.
 --exclude overrides all of the above.
 EOF
-          exit 0;
+       exit 0;
+    } elsif($_ eq '--version') {
+       print "$version\n";
+       exit 0;
     } else {
 	die "ERROR: unknown option '$_'\n";
     }
