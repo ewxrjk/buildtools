@@ -1137,7 +1137,7 @@ sub parse_line($$) {
       die "$where: malformed string literal\n";
     } elsif(/^[^"\s]+/) {
       push(@l, $&);
-      $_ = $';
+      $_ = $';                  #'
     }
   }
   return @l;
@@ -1157,6 +1157,43 @@ sub expand_environment($$) {
   }
   return $_;
 }
+
+=head1 SETUP
+
+It is sensible to configure special-purpose user logins for automated
+builds, to eliminate variation in the environment of "real" users.
+
+On a Debian system:
+
+  adduser --system --home /var/cache/build --shell /bin/bash build
+
+Under OSX (you will need to pick an unused UID):
+
+  dscl . -readall /Users UniqueID|awk '/[0-9]$/{print $2}'|sort
+  # pick an unused UID below 500...
+  sudo dscl . -create /Users/build
+  sudo dscl . -create /Users/build UniqueID 299
+  sudo dscl . -create /Users/build UserShell /bin/bash
+  sudo dscl . -create /Users/build NFSHomeDirectory /Users/build
+  sudo dscl . -create /Users/build PrimaryGroupID -1
+  sudo mkdir /Users/build
+  sudo chown build /Users/build
+
+On the master, create an SSH key:
+
+  sudo su - build
+  ssh-keygen -t rsa
+
+On the build hosts copy the public key into I<.ssh/authorized_keys>.
+
+Arrange for B<polybuild> to run (for instance) from cron as user
+B<build>.
+
+=head1 AUTHOR
+
+Richard Kettlewell <rjk@greenend.org.uk>
+
+=cut
 
 # Local Variables:
 # cperl-indent-level:4
