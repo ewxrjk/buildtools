@@ -1184,6 +1184,7 @@ Under OSX (you will need to pick an unused UID):
   sudo dscl . -create /Users/build UserShell /bin/bash
   sudo dscl . -create /Users/build NFSHomeDirectory /Users/build
   sudo dscl . -create /Users/build PrimaryGroupID -1
+  sudo dscl . -create /Users/build Password '*'
   sudo mkdir /Users/build
   sudo chown build /Users/build
 
