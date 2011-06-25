@@ -34,10 +34,10 @@ verify-perl:
 	perl -wc stabilize
 
 stabilize.1: stabilize
-	pod2man stabilize > stabilize.1
+	pod2man -c "Build tools" -r ${VERSION} stabilize > stabilize.1
 
 polybuild.1: polybuild
-	pod2man polybuild > polybuild.1
+	pod2man -c "Build tools" -r ${VERSION} polybuild > polybuild.1
 
 clean:
 	rm -f stabilize.1
