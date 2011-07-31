@@ -489,10 +489,10 @@ while(defined($_ = <CONF>)) {
         die "$config:$line: unknown branch type '$type'\n"
           unless $type eq 'bzr' or $type eq 'git';
 	$branches{$branch}->{type} = $type;
-    } elsif($cmd eq 'branch') {
-	die "$config:$line: 'branch' outside 'define-branch'\n"
+    } elsif($cmd eq 'checkout') {
+	die "$config:$line: 'checkout' outside 'define-branch'\n"
 	    unless defined $branch;
-	$branches{$branch}->{branch} = shift @l;
+	$branches{$branch}->{checkout} = shift @l;
     } elsif($cmd eq 'define') {
 	my $k = shift @l;
 	my $v = shift @l;
@@ -605,10 +605,10 @@ for my $branch (keys %branches) {
             print STDERR "ERROR: cannot get source code for $branch\n";
             $failed++;
         }
-        if(exists $branches{$branch}->{branch}) {
+        if(exists $branches{$branch}->{checkout}) {
             if(cmd("-chdir", "$workdir/$branch",
-                   "git", "checkout", "-q", $branches{$branch}->{branch})) {
-                print STDERR "ERROR: cannot checkout $branch branch $branches{$branch}->{branch}\n";
+                   "git", "checkout", "-q", $branches{$branch}->{checkout})) {
+                print STDERR "ERROR: cannot checkout $branch branch $branches{$branch}->{checkout}\n";
                 ++$failed;
             }
         }
