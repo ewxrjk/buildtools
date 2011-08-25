@@ -1178,12 +1178,16 @@ On a Debian system:
 Under OSX (you will need to pick an unused UID):
 
   dscl . -readall /Users UniqueID|awk '/[0-9]$/{print $2}'|sort
-  # pick an unused UID below 500...
+  dscl . -readall /Groups PrimaryGroupID|awk '/[0-9]$/{print $2}'|sort
+  # pick an unused UID and GID below 500...
+  sudo dscl . -create /Groups/build
+  sudo dscl . -create /Groups/build PrimaryGroupID 299
+  sudo dscl . -create /Groups/build Password *'
   sudo dscl . -create /Users/build
   sudo dscl . -create /Users/build UniqueID 299
   sudo dscl . -create /Users/build UserShell /bin/bash
   sudo dscl . -create /Users/build NFSHomeDirectory /Users/build
-  sudo dscl . -create /Users/build PrimaryGroupID -1
+  sudo dscl . -create /Users/build PrimaryGroupID 299
   sudo dscl . -create /Users/build Password '*'
   sudo mkdir /Users/build
   sudo chown build /Users/build
