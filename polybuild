@@ -1192,6 +1192,10 @@ Under OSX (you will need to pick an unused UID):
   sudo mkdir /Users/build
   sudo chown build /Users/build
 
+Under FreeBSD:
+
+  pw useradd build -c Builds -m -d /var/polybuild
+
 On the master, create an SSH key:
 
   sudo su - build
