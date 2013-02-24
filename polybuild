@@ -135,16 +135,19 @@ th.host {
   padding-right: 4px
 }
 
-th.os {
+th.os, th.os0, th.os2 {
   background-color: #e0ffff;
   padding-left: 4px;
   padding-right: 4px
 }
 
-th.osver {
-  border-bottom: 1px solid black;
+th.os1 {
   padding-left: 4px;
   padding-right: 4px
+}
+
+th.os2 {
+  border-bottom: 1px solid black;
 }
 
 td.unbuilt {
@@ -972,44 +975,38 @@ sub genmail {
 	++$id;
     }    
     push(@html, "  <thead>\n");
+
+    # Hostnames
     
     push(@html, "   <tr class=host>\n");
     push(@html, "    <th class=corner>\n");
 
     $id = 0;
+    my $hrows = 0;
     for my $host (@hostorder) {
 	next if $hosts{$host}->{state} eq 'inactive';
+        my @bits = split(/-/, $hosts{$host}->{os});
+        my $nbits = scalar @bits;
+        $hrows = $nbits if $nbits > $hrows;
 	push(@html, "    <th id=host$id colspan=2 class=host>$host\n");
 	++$id;
     }
 
-    push(@html, "   <tr class=platform>\n");
-    push(@html, "    <th class=corner>\n");
+    # OS versions (over as many rows as required)
 
-    $id = 0;
-    for my $host (@hostorder) {
-	next if $hosts{$host}->{state} eq 'inactive';
-	if($hosts{$host}->{os} =~ /-/) {
-	    push(@html, "    <th id=os$id colspan=2 class=os>$`\n");
-	} else {
-	    push(@html, "    <th id=os$id colspan=2 class=os>$hosts{$host}->{os}\n");
-	}
-	++$id;
+    for(my $hrow = 0; $hrow < $hrows; ++$hrow) {
+        push(@html, "   <tr class=platform>\n");
+        push(@html, "    <th class=corner>\n");
+        $id = 0;
+        for my $host (@hostorder) {
+            next if $hosts{$host}->{state} eq 'inactive';
+            my @bits = split(/-/, $hosts{$host}->{os});
+            my $bit = ($bits[$hrow] or "");
+            push(@html, "    <th id=os$id colspan=2 class=os${hrow}>$bit\n");
+            ++$id;
+        }
     }
 
-    push(@html, "   <tr class=platform>\n");
-    push(@html, "    <th class=corner>\n");
-
-    $id = 0;
-    for my $host (@hostorder) {
-	next if $hosts{$host}->{state} eq 'inactive';
-	if($hosts{$host}->{os} =~ /-/) {
-	    push(@html, "    <th id=osver$id colspan=2 class=osver>$'\n");
-	} else {
-	    push(@html, "    <th id=osver$id colspan=2 class=osver>\n");
-	}
-	++$id;
-    }
     push(@html, "  </thead>\n");
     push(@html, "  <tbody>\n");
 
