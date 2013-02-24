@@ -361,6 +361,11 @@ specify B<gmake> on a system with an inadequate native version.
 Defines the static analyzer to use on this host.  For instance you
 might use "scan-build -o scans" to use the Clang static analyzer.
 
+=item B<scans> URL
+
+Defines the base URL for scanner output.  Typically would be use with
+B<scanner> (but this isn't mandatory).
+
 =item B<clean> B<yes>|B<no>
 
 If set to B<yes> (the default) then build trees are removed on
@@ -471,6 +476,10 @@ while(defined($_ = <CONF>)) {
 	die "$config:$line: 'scanner' outside 'define-host'\n"
 	    unless defined $host;
 	$hosts{$host}->{scanner} = shift @l;
+    } elsif($cmd eq 'scans') {
+	die "$config:$line: 'scans' outside 'define-host'\n"
+	    unless defined $host;
+	$hosts{$host}->{scans} = shift @l;
     } elsif($cmd eq 'clean') {
 	die "$config:$line: 'clean' outside 'define-host'\n"
 	    unless defined $host;
@@ -734,7 +743,7 @@ our %buildtextmap = (
     "checkok" => ":)",
     "checkfail" => ":)",
     "down" => "D",
-    "suppressed" => "S",
+    "suppressed" => "-",
 );
 
 our %checktextmap = (
@@ -746,7 +755,19 @@ our %checktextmap = (
     "checkok" => ":)",
     "checkfail" => "C",
     "down" => "D",
-    "suppressed" => "S",
+    "suppressed" => "-",
+);
+
+our %scantextmap = (
+    "unbuilt" => "?",
+    "building" => "b...",
+    "buildok" => "S",
+    "buildfail" => "B",
+    "checking" => "S",
+    "checkok" => "S",
+    "checkfail" => "S",
+    "down" => "D",
+    "suppressed" => "-",
 );
 
 # Create the host status array.  Possible status are:
@@ -971,6 +992,7 @@ sub genmail {
 	push(@html, "  <colgroup id=results$id class=results>\n");
 	push(@html, "   <col class=build>\n");
 	push(@html, "   <col class=check>\n");
+	push(@html, "   <col class=check>\n") if exists $hosts{$host}->{scans};
 	push(@html, "  </colgroup>\n");
 	++$id;
     }    
@@ -988,7 +1010,8 @@ sub genmail {
         my @bits = split(/-/, $hosts{$host}->{os});
         my $nbits = scalar @bits;
         $hrows = $nbits if $nbits > $hrows;
-	push(@html, "    <th id=host$id colspan=2 class=host>$host\n");
+        my $colspan = 2 + exists $hosts{$host}->{scans};
+	push(@html, "    <th id=host$id colspan=${colspan} class=host>$host\n");
 	++$id;
     }
 
@@ -1002,7 +1025,8 @@ sub genmail {
             next if $hosts{$host}->{state} eq 'inactive';
             my @bits = split(/-/, $hosts{$host}->{os});
             my $bit = ($bits[$hrow] or "");
-            push(@html, "    <th id=os$id colspan=2 class=os${hrow}>$bit\n");
+            my $colspan = 2 + exists $hosts{$host}->{scans};
+            push(@html, "    <th id=os$id colspan=${colspan} class=os${hrow}>$bit\n");
             ++$id;
         }
     }
@@ -1058,6 +1082,16 @@ sub genmail {
 	    } else {
 		push(@html, "    <td id=check$hid class=$checkstate>$checktextmap{$s}\n");
 	    }
+            if(exists $hosts{$host}->{scans}) {
+                if(defined $buildlog) {
+                    push(@html, "    <td id=scan$hid class=$buildstate>\n");
+                    push(@html, "     <a href=\"$hosts{$host}->{scans}/$branch\" title=\"Scanner output for $branch\">");
+                    push(@html, "      $scantextmap{$s}\n");
+                    push(@html, "     </a>\n");
+                } else {
+                    push(@html, "    <td id=scan$hid class=$buildstate>$scantextmap{$s}\n");
+                }
+            }
 	    ++$hid;
 	}
 	++$id;
