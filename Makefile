@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2008, 2009, 2011 Richard Kettlewell
+# Copyright (C) 2008, 2009, 2011, 2013 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ man1dir=${mandir}/man1
 INSTALL=install
 
 PACKAGE=rjk-build-tools
-VERSION=0.DEV
+VERSION=0.1
 
 all: verify-perl polybuild.1 stabilize.1
 

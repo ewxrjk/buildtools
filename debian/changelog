@@ -1,8 +1,13 @@
-rjk-build-tools (0.DEV) unstable; urgency=low
+rjk-build-tools (0.1) unstable; urgency=low
 
-  * This is the development branch.
+  * --version option
+  * Documentation improvements
+  * Correct implementation of 'checkout' command
+  * Improve HTML formatting
+  * Include link to scanner output
+  * Support packages that require 'autoreconf'
 
- -- Richard Kettlewell <rjk@greenend.org.uk>  Sat, 25 Jun 2011 10:35:53 +0100
+ -- Richard Kettlewell <rjk@greenend.org.uk>  Sun, 29 Sep 2013 11:26:41 +0100
 
 rjk-build-tools (0.0) unstable; urgency=low
 

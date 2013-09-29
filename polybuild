@@ -210,7 +210,7 @@ td.down {
   width: 2em
 }
 ";
-my $version = "0.DEV";
+my $version = "0.1";
 
 # Parse command line
 our $config = "/etc/polybuild.conf";
