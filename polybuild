@@ -233,7 +233,7 @@ Usage:
   polybuild [OPTIONS...] [BRANCH|HOST...]
 
 Options:
-  --config PATH                 Path to configuration file ./polybuild.conf)
+  --config PATH                 Path to configuration file (polybuild.conf)
   --exclude BRANCH|HOST         Suppress a branch or host
   --email ADDRESS               Email report to this address
   --base URL                    Base URL for links in logfile
