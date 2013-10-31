@@ -1209,6 +1209,25 @@ sub expand_environment($$) {
   return $_;
 }
 
+=head1 BUILDS
+
+Builds are constructed according to the following logic.
+
+If I<autogen.sh> or I<prepare> exist, they are run.  It is assumed in
+further steps that these will create I<configure>.
+
+If I<configure.ac> exists but I<configure> does not exist then the
+B<autoreconf -is> is run to generate it.
+
+If a I<debian> directory exists and the host OS is Debian-like, the
+build is performed by invoking B<debian/rules build> and then
+B<fakeroot debian/rules binary>.  It is assumed that these will run
+the configure script with appropriate arguments if necessary.
+
+Otherwise, if I<configure> is present or has been created it is run
+without arguments, followed by the host operating systems B<make>
+command.
+
 =head1 SETUP
 
 It is sensible to configure special-purpose user logins for automated
