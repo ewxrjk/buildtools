@@ -877,43 +877,43 @@ for(;;) {
 		# nice if we could put this logic into the config file
 		# and provide per-branch overrides but for now this will
 		# do.
-		
-		# On Debian-like systems we attempt a native build,
-		# including producing .deb files.
-		if(-d "$workdir/$b/debian"
-		   and ($hosts{$host}->{os} =~ /^(debian|ubuntu)/i)) {
-                    # Things that need autoreconf
-                    if(-e "$workdir/$b/configure.ac"
-                       && ! -e "$workdir/$b/configure") {
-                        return ssh($host,
-                                   "$env cd \Q$w/$b\E && autoreconf -is && $scanner ./configure && $scanner debian/rules build && fakeroot debian/rules binary");
-                    }
-		    return ssh($host,
-			       "$env cd \Q$w/$b\E && $scanner debian/rules build && fakeroot debian/rules binary");
-		}
-		# If there's an autogen.sh we run that and then configure
-		# before doing the make
-		if(-e "$workdir/$b/autogen.sh") {
-		    return ssh($host,
-			       "$env cd \Q$w/$b\E && bash ./autogen.sh && $scanner ./configure && $scanner $hosts{$host}->{make}");
-		} elsif(-e "$workdir/$b/prepare") {
+		my $has_autogen_sh = -e "$workdir/$b/autogen.sh";
+		my $has_prepare = -e "$workdir/$b/prepare";
+		my $has_configure_ac = -e "$workdir/$b/configure.ac";
+		my $has_configure = -e "$workdir/$b/configure";
+                my $has_debian = -d "$workdir/$b/debian"
+                    && ($hosts{$host}->{os} =~ /^(debian|ubuntu)/i);
+                my @build = ("$env cd \Q$w/$b\E");
+                if($has_autogen_sh) {
+                    # If there's an autogen.sh we run that and then configure
+                    # before doing the make
+                    push(@build, "./autogen.sh");
+                    $has_configure = 1;
+                } elsif($has_prepare) {
                     # Some of my old code uses 'prepare' instead
-		    return ssh($host,
-			       "$env cd \Q$w/$b\E && bash ./prepare && $scanner ./configure && $scanner $hosts{$host}->{make}");
-		}
-                # Things that need autoreconf
-                if(-e "$workdir/$b/configure.ac"
-                   && ! -e "$workdir/$b/configure") {
-		    return ssh($host,
-			       "$env cd \Q$w/$b\E && autoreconf -is && $scanner ./configure && $scanner $hosts{$host}->{make}");
+                    push(@build, "./prepare");
+                    $has_configure = 1;
                 }
-		# If there's a configure we run that before doing the make
-		if(-e "$workdir/$b/configure") {
-		    return ssh($host,
-			       "$env cd \Q$w/$b\E && $scanner ./configure && $scanner $hosts{$host}->{make}");
-		}
-		# Hopefuly there is at least a makefile
-		return ssh($host, "$env cd \Q$w/$b\E && $scanner $hosts{$host}->{make}");
+                if($has_configure_ac && !$has_configure) {
+                    # Try autoreconf if the package doens't offer a
+                    # bootstrap script
+                    push(@build, "autoreconf -is");
+                    $has_configure = 1;
+                }
+                if($has_debian) {
+                    # On Debian-like systems we attempt a native build,
+                    # including producing .deb files.
+                    push(@build, "$scanner debian/rules build");
+                    push(@build, "fakeroot debian/rules binary");
+                } else {
+                    if($has_configure) {
+                        # Run configure if present
+                        push(@build, "$scanner ./configure");
+                    }
+                    # There should be a makefile by now
+                    push(@build, "$scanner $hosts{$host}->{make}");
+                }
+                return ssh($host, join(" && ", @build));
 	    });
 	    $branches{$b}->{status}->{$host} = 'building';
 	} else {
