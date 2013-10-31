@@ -1,3 +1,10 @@
+rjk-build-tools (0.2) unstable; urgency=low
+
+  * More sensible build logic
+  * Document build logic
+
+ -- Richard Kettlewell <rjk@greenend.org.uk>  Thu, 31 Oct 2013 21:23:22 +0000
+
 rjk-build-tools (0.1) unstable; urgency=low
 
   * --version option
