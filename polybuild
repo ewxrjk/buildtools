@@ -1,6 +1,6 @@
 #! /usr/bin/perl -w
 #
-# Copyright (C) 2008, 2009, 2011, 2013 Richard Kettlewell
+# Copyright (C) 2008, 2009, 2011, 2013, 2014 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -356,15 +356,10 @@ Adds a value to the environment on this host.
 Defines the name of B<make> on this host.  For instance you might
 specify B<gmake> on a system with an inadequate native version.
 
-=item B<scanner> COMMAND
+=item B<scanner> SCANNER
 
-Defines the static analyzer to use on this host.  For instance you
-might use "scan-build -o scans" to use the Clang static analyzer.
-
-=item B<scans> URL
-
-Defines the base URL for scanner output.  Typically would be use with
-B<scanner> (but this isn't mandatory).
+Defines the static analyzer to use on this host.  The supported values
+are currently just B<clang> to use the Clang static analyzer.
 
 =item B<clean> B<yes>|B<no>
 
@@ -473,13 +468,12 @@ while(defined($_ = <CONF>)) {
 	    unless defined $host;
 	$hosts{$host}->{make} = shift @l;
     } elsif($cmd eq 'scanner') {
-	die "$config:$line: 'scanner' outside 'define-host'\n"
-	    unless defined $host;
-	$hosts{$host}->{scanner} = shift @l;
-    } elsif($cmd eq 'scans') {
-	die "$config:$line: 'scans' outside 'define-host'\n"
-	    unless defined $host;
-	$hosts{$host}->{scans} = shift @l;
+        die "$config:$line: 'scanner' outside 'define-host'\n"
+            unless defined $host;
+        my $scanner = shift @l;
+	die "$config:$line: unrecognized static analyser\n"
+            unless $scanner eq 'clang';
+	$hosts{$host}->{scanner} = $scanner;
     } elsif($cmd eq 'clean') {
 	die "$config:$line: 'clean' outside 'define-host'\n"
 	    unless defined $host;
@@ -793,6 +787,25 @@ for(;;) {
 		} else {
 		    $branches{$branch}->{status}->{$host} = 'buildok';
 		}
+                # Capture static analysis output
+                if(exists $hosts{$host}->{scanner}) {
+                    if($hosts{$host}->{scanner} eq 'clang') {
+                        # Clang scanner output is in _scans/<something>
+                        # in the work directory.  The <something>
+                        # is not readily predictable and may be missing.
+                        my $w = $hosts{$host}->{work};
+                        my $h = $hosts{$host}->{hostname};
+                        cmd("rm", "-rf", "$host.$branch.SCAN");
+                        cmd("scp", "-r", "$h:$w/$branch/_scans", "$host.$branch.SCAN");
+                        for my $scanout (glob "$workdir/$host.$branch.SCAN/*/*") {
+                            if($scanout =~ /index.html$/) {
+                                $branches{$branch}->{scanout}->{$host}
+                                  = $scanout;
+                                last;
+                            }
+                        }
+                    }
+                }
 	    } else {
 		if($?) {
 		    $branches{$branch}->{status}->{$host} = 'checkfail';
@@ -864,12 +877,15 @@ for(;;) {
 	    # in the background too but for now we do it synchronously;
 	    # it's probably not actually going to be a large proportion
 	    # of the build time.
-            my $scanner = "";
-            if(exists $hosts{$host}->{scanner}) {
-              $scanner = "$hosts{$host}->{scanner} ";
-            }
 	    ssh($host, "rm -rf \Q$w/$b\E");
 	    cmd("rsync", "-r", "$b", "$hosts{$host}->{hostname}:$w/.");
+            # Identify the static analyser to use
+            my $scanprefix = "";
+            if(exists $hosts{$host}->{scanner}) {
+                if($hosts{$host}->{scanner} eq 'clang') {
+                    $scanprefix = "scan-build -o _scans";
+                }
+            }
 	    # Start the build
 	    $hosts{$host}->{pid} = background("$host.$b.BUILD.txt",
             sub {
@@ -903,15 +919,15 @@ for(;;) {
                 if($has_debian) {
                     # On Debian-like systems we attempt a native build,
                     # including producing .deb files.
-                    push(@build, "$scanner debian/rules build");
+                    push(@build, "$scanprefix debian/rules build");
                     push(@build, "fakeroot debian/rules binary");
                 } else {
                     if($has_configure) {
                         # Run configure if present
-                        push(@build, "$scanner ./configure");
+                        push(@build, "$scanprefix ./configure");
                     }
                     # There should be a makefile by now
-                    push(@build, "$scanner $hosts{$host}->{make}");
+                    push(@build, "$scanprefix $hosts{$host}->{make}");
                 }
                 return ssh($host, join(" && ", @build));
 	    });
@@ -1004,7 +1020,7 @@ sub genmail {
 	push(@html, "  <colgroup id=results$id class=results>\n");
 	push(@html, "   <col class=build>\n");
 	push(@html, "   <col class=check>\n");
-	push(@html, "   <col class=check>\n") if exists $hosts{$host}->{scans};
+	push(@html, "   <col class=check>\n") if exists $hosts{$host}->{scanner};
 	push(@html, "  </colgroup>\n");
 	++$id;
     }    
@@ -1022,7 +1038,7 @@ sub genmail {
         my @bits = split(/-/, $hosts{$host}->{os});
         my $nbits = scalar @bits;
         $hrows = $nbits if $nbits > $hrows;
-        my $colspan = 2 + exists $hosts{$host}->{scans};
+        my $colspan = 2 + exists $hosts{$host}->{scanner};
 	push(@html, "    <th id=host$id colspan=${colspan} class=host>$host\n");
 	++$id;
     }
@@ -1037,7 +1053,7 @@ sub genmail {
             next if $hosts{$host}->{state} eq 'inactive';
             my @bits = split(/-/, $hosts{$host}->{os});
             my $bit = ($bits[$hrow] or "");
-            my $colspan = 2 + exists $hosts{$host}->{scans};
+            my $colspan = 2 + exists $hosts{$host}->{scanner};
             push(@html, "    <th id=os$id colspan=${colspan} class=os${hrow}>$bit\n");
             ++$id;
         }
@@ -1094,14 +1110,15 @@ sub genmail {
 	    } else {
 		push(@html, "    <td id=check$hid class=$checkstate>$checktextmap{$s}\n");
 	    }
-            if(exists $hosts{$host}->{scans}) {
-                if(defined $buildlog) {
+            if(exists $hosts{$host}->{scanner}) {
+                my $scanout = $branches{$branch}->{scanout}->{$host};
+                if(defined $buildlog and defined $scanout) {
                     push(@html, "    <td id=scan$hid class=$buildstate>\n");
-                    push(@html, "     <a href=\"$hosts{$host}->{scans}/$branch\" title=\"Scanner output for $branch\">");
+                    push(@html, "     <a href=\"$scanout\" title=\"Scanner output for $branch\">");
                     push(@html, "      $scantextmap{$s}\n");
                     push(@html, "     </a>\n");
                 } else {
-                    push(@html, "    <td id=scan$hid class=$buildstate>$scantextmap{$s}\n");
+                    push(@html, "    <td id=scan$hid class=$buildstate>-\n");
                 }
             }
 	    ++$hid;
