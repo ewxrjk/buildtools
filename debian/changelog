@@ -1,3 +1,10 @@
+rjk-build-tools (0.3) unstable; urgency=low
+
+  * 'scanner' option takes name of the analyser to use.
+  * 'scans' option is abolished.
+
+ -- Richard Kettlewell <rjk@greenend.org.uk>  Fri, 16 May 2014 17:52:05 +0100
+
 rjk-build-tools (0.2) unstable; urgency=low
 
   * More sensible build logic
