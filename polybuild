@@ -924,6 +924,9 @@ for(;;) {
                 } else {
                     if($has_configure) {
                         # Run configure if present
+                        # ./configure may produce false positives, but
+                        # http://clang-analyzer.llvm.org/scan-build.html
+                        # recommends we run it under the scanner anyway.
                         push(@build, "$scanprefix ./configure");
                     }
                     # There should be a makefile by now
