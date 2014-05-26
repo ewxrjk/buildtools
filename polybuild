@@ -387,6 +387,19 @@ B<bzr> or B<git>.
 
 Defines the sub-branch to switch to.  This is only useful with B<git>.
 
+=item B<depends> TARGET
+
+Defines a branch which this branch depends on.  The outputs of the
+dependency target will be included in the include and library search
+paths of this branch's builds.
+
+The target of the dependency must already have been defined.
+
+Dependencies are B<not> honored on Debian/Ubuntu platforms (as
+inferred from the platform name; see above).  This is because the
+Debian build system computes package dependencies based on the
+packages that shared libraries are found in.
+
 =back
 
 =cut
@@ -497,6 +510,14 @@ while(defined($_ = <CONF>)) {
 	die "$config:$line: 'checkout' outside 'define-branch'\n"
 	    unless defined $branch;
 	$branches{$branch}->{checkout} = shift @l;
+    } elsif($cmd eq 'depends') {
+	die "$config:$line: 'depends' outside 'define-branch'\n"
+	    unless defined $branch;
+        my $target = shift @l;
+        die "$config:$line: 'depends' on later branch\n"
+          unless exists $branches{$target};
+	$branches{$branch}->{depends}->{$target} = 1;
+        $branches{$target}->{rdepends}->{$branch} = 1;
     } elsif($cmd eq 'define') {
 	my $k = shift @l;
 	my $v = shift @l;
@@ -516,6 +537,15 @@ while(defined($_ = <CONF>)) {
     }
 }
 close CONF;
+
+for my $branch (keys %branches) {
+    if(exists $branches{$branch}->{depends}) {
+        print "$branch: depends on ", join(" ", keys %{$branches{$branch}->{depends}}), "\n";
+    }
+    if(exists $branches{$branch}->{rdepends}) {
+        print "$branch: rdepends fromn ", join(" ", keys %{$branches{$branch}->{rdepends}}), "\n";
+    }
+}
 
 # Guess branch types where not stated
 for my $branch (keys %branches) {
@@ -590,6 +620,7 @@ for my $host (keys %hosts) {
         print STDERR "ERROR: marking host $host as down\n";
 	$hosts{$host}->{state} = 'down';
     }
+    chomp($hosts{$host}->{work_abs} = `ssh $hosts{$host}->{hostname} cd \Q$hosts{$host}->{work}\E '&&' pwd`);
 }
 
 # Check out source code
@@ -847,7 +878,7 @@ for(;;) {
 	next if $group_jobs{$group} >= $group_limit{$group};
 	my $b;
 	# Look for some work for this host to do
-	for my $branch (keys %branches) {
+	for my $branch (@branchorder) {
 	    next unless $branches{$branch}->{state} eq 'active';
 	    my $s = $branches{$branch}->{status}->{$host};
 	    if($s eq 'unbuilt' or $s eq 'buildok') {
@@ -859,13 +890,28 @@ for(;;) {
 	next unless defined $b;
 	$hosts{$host}->{branch} = $b;
 	my $w = $hosts{$host}->{work};
+	my $wa = $hosts{$host}->{work_abs};
 	my $env = "";
+        # Construct the environment
+        my %env = ();
 	for my $k (keys %globalenv) {
-	    $env .= "$k=\Q$globalenv{$k}\E;export $k;"
-	}
+          $env{$k} = $globalenv{$k};
+        }
 	my $e = $hosts{$host}->{environ};
 	for my $k (keys %$e) {
-	    $env .= "$k=\Q$e->{$k}\E;export $k;"
+            $env{$k} = $e->{$k};
+	}
+        # Add ref to dependencies, on Debian-like hosts only
+        if($hosts{$host}->{os} !~ /^(debian|ubuntu)/i) {
+            for my $d (keys %{$branches{$b}->{depends}}) {
+                $env{CPPFLAGS} .= " -I$wa/inst-$d/include";
+                $env{LDFLAGS} .= " -L$wa/inst-$d/lib";
+                #TODO how about bin?
+            }
+        }
+        $env = "";
+	for my $k (keys %env) {
+	    $env .= "$k=\Q$env{$k}\E;export $k;"
 	}
 	if(@{$hosts{$host}->{path}}) {
 	    $env .= "PATH=" . join(":", @{$hosts{$host}->{path}}, "\$PATH") . ";export PATH;";
@@ -897,7 +943,15 @@ for(;;) {
 		my $has_configure = -e "$workdir/$b/configure";
                 my $has_debian = -d "$workdir/$b/debian"
                     && ($hosts{$host}->{os} =~ /^(debian|ubuntu)/i);
-                my @build = ("$env cd \Q$w/$b\E");
+                my @build = ();
+                push(@build, "$env cd \Q$w/$b\E");
+                my $prefix;
+                if($hosts{$host}->{os} !~ /^(debian|ubuntu)/i
+                   and ${branches{$b}->{rdepends}}) {
+                    $prefix = "$wa/inst-$b";
+                    push(@build, "rm -rf \Q$prefix\E");
+                    push(@build, "mkdir -p \Q$prefix\E");
+                }
                 if($has_autogen_sh) {
                     # If there's an autogen.sh we run that and then configure
                     # before doing the make
@@ -920,15 +974,30 @@ for(;;) {
                     push(@build, "$scanprefix debian/rules build");
                     push(@build, "fakeroot debian/rules binary");
                 } else {
+                    my @make = ();
+                    push(@make, $scanprefix);
+                    push(@make, $hosts{$host}->{make});
                     if($has_configure) {
                         # Run configure if present
                         # ./configure may produce false positives, but
                         # http://clang-analyzer.llvm.org/scan-build.html
                         # recommends we run it under the scanner anyway.
-                        push(@build, "$scanprefix ./configure");
+                        my @configure = ();
+                        push(@configure, $scanprefix);
+                        push(@configure, "./configure");
+                        push(@configure, "--prefix=\Q$prefix\E")
+                          if defined $prefix;
+                        push(@build, join(" ", @configure));
+                    } else {
+                        push(@make, "prefix=\Q$prefix\E")
+                          if defined $prefix;
                     }
                     # There should be a makefile by now
-                    push(@build, "$scanprefix $hosts{$host}->{make}");
+                    push(@build, join(" ", @make));
+                    if(${branches{$b}->{rdepends}}
+                       and $hosts{$host}->{os} !~ /^(debian|ubuntu)/i) {
+                        push(@build, join(" ", @make, "install"));
+                    }
                 }
                 return ssh($host, join(" && ", @build));
 	    });
@@ -1245,6 +1314,21 @@ the configure script with appropriate arguments if necessary.
 Otherwise, if I<configure> is present or has been created it is run
 without arguments, followed by the host operating systems B<make>
 command.
+
+Finally B<make check> is run to perform tests.
+
+=head2 Dependencies
+
+In the non-Debian case if the branch is the target of a dependency
+then B<make install> is performed to install the branch's build
+products to a staging directory which the branches that depend on it
+will use.
+
+The staging directory is specified by the B<--prefix> argument to
+I<configure> if that is used, and otherwise by B<prefix=> assignments
+on each invocation of B<make>.
+
+No extra B<prefix=> assignment is used when performing tests.
 
 =head1 SETUP
 
