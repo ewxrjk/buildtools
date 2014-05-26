@@ -16,7 +16,16 @@ branch provided the branch continues to build.
 
 Please send feedback to Richard Kettlewell <rjk@greenend.org.uk>.
 
-------------------------------------------------------------------------
+Installation
+------------
+
+    autoreconf -si        # unless configure already exists
+    ./configure
+    make check
+    sudo make install
+
+Copyright
+---------
 
 Copyright (C) 2008-2014 Richard Kettlewell
 

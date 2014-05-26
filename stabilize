@@ -114,6 +114,7 @@ Richard Kettlewell <rjk@greenend.org.uk>
 
 our $debug = 0;
 our $notify;
+our $version = "0.4";
 
 # Return the tip revno of a branch
 sub tip {
@@ -146,6 +147,7 @@ while(@ARGV > 0 and $ARGV[0] =~ /^-/) {
 
 Options:
   --help, -h               Display usage message
+  --version, -V            Display version string
   --debug, -d              Debug mode
   --notify, -n ADDRESS     Email address to send notifications to
 
@@ -162,6 +164,9 @@ successfully.
         $debug = 1;
     } elsif($opt eq '-n' or $opt eq '--notify') {
         $notify = shift;
+    } elsif($opt eq '-V' or $opt eq '--version') {
+        print "$version\n";
+        exit 0;
     } else {
         die "$0: unknown option '$opt'\n";
     }

@@ -1,0 +1,11 @@
+#! /bin/bash
+set -e
+rc=0
+for executable in polybuild stabilize; do
+  version=`./${executable} --version`
+  if [ "$version" != "${VERSION}" ]; then
+    echo "ERROR: ${executable}: wrong version ${version}"
+    rc=1
+  fi
+done
+exit $rc

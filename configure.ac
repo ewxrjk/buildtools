@@ -1,0 +1,24 @@
+# Copyright (C) 2014 Richard Kettlewell
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+AC_PREREQ([2.61])
+AC_INIT([rjk-build-tools], [0.4], [rjk@greenend.org.uk])
+AC_CONFIG_AUX_DIR([config.aux])
+AC_CONFIG_MACRO_DIR([m4])
+AM_INIT_AUTOMAKE([foreign])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
+AC_CONFIG_SRCDIR([polybuild])
+AC_SET_MAKE
+AC_CONFIG_FILES([Makefile])
+AC_OUTPUT

@@ -14,7 +14,10 @@ export INSTALL_PROGRAM
 SHELL=bash
 
 build:
+	autoreconf -si
+	./configure --prefix=/usr --mandir=/usr/share/man
 	$(MAKE)
+	$(MAKE) check
 
 binary-polybuild: build
 	rm -rf debian/polybuild
@@ -22,14 +25,11 @@ binary-polybuild: build
 	$(INSTALL_DATA) debian/conffiles.polybuild debian/polybuild/DEBIAN/conffiles
 	$(MKDIR) debian/polybuild/etc/cron.daily
 	$(MKDIR) debian/polybuild/etc/default
-	$(MKDIR) debian/polybuild/usr/bin
-	$(MKDIR) debian/polybuild/usr/share/man/man1
 	$(MKDIR) debian/polybuild/usr/share/doc/polybuild
 	$(INSTALL_DATA) debian/copyright debian/changelog README \
 		debian/polybuild/usr/share/doc/polybuild/.
 	gzip -9 debian/polybuild/usr/share/doc/polybuild/changelog*
-	$(INSTALL_PROGRAM) polybuild debian/polybuild/usr/bin/.
-	$(INSTALL_DATA) polybuild.1 debian/polybuild/usr/share/man/man1/.
+	$(MAKE) install DESTDIR=debian/polybuild
 	$(INSTALL_DATA) polybuild.default debian/polybuild/etc/default/polybuild
 	$(INSTALL_SCRIPT) polybuild.cron debian/polybuild/etc/cron.daily/polybuild
 	gzip -9v debian/polybuild/usr/share/man/man*/*
