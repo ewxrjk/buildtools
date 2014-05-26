@@ -23,7 +23,7 @@ man1dir=${mandir}/man1
 INSTALL=install
 
 PACKAGE=rjk-build-tools
-VERSION=0.3
+VERSION=0.4
 
 all: verify-perl polybuild.1 stabilize.1
 
