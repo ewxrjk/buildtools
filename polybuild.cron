@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Copyright (C) 2011 Richard Kettlewell
+# Copyright (C) 2011, 2014 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,6 +36,13 @@ if [ -e /etc/polybuild.conf ]; then
   if [ x$USER = x ]; then
     polybuild --base $BASE $EMAILARG
   else
-    su -c "polybuild --base $BASE $EMAILARG" $USER >>/var/log/polybuild 2>&1
+    if su -c "polybuild --base $BASE $EMAILARG" $USER \
+        >>/var/log/polybuild 2>&1; then
+      :
+    else
+      echo "ERROR: Polybuild failed."
+      echo
+      tail /var/log/polybuild
+    fi
   fi
 fi
