@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2008, 2009, 2011, 2013, 2014 Richard Kettlewell
+# Copyright (C) 2014 Richard Kettlewell
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,8 +15,22 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-SUBDIRS=build
-dist_noinst_SCRIPTS=polybuild.cron polybuild.default
-TESTS=syntaxcheck
-EXTRA_DIST=polybuild stabilize polybuild.conf
-export srcdir
+bin_SCRIPTS=polybuild stabilize
+man_MANS=polybuild.1 stabilize.1
+
+%: ../%
+	rm -f $@.new
+	sed < $< > $@.new \
+		"s/version *=.*/version='${VERSION}';/"
+	chmod 555 $@.new
+	mv $@.new $@
+
+%.1: %
+	podchecker $<
+	rm -f $@.new
+	pod2man -c 'Build Tools' -r ${VERSION} $< > $@.new
+	mv $@.new $@
+
+clean-local:
+	rm -f stabilize stabilize.1
+	rm -f polybuild polybuild.1

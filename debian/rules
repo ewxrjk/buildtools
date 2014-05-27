@@ -19,7 +19,7 @@ build:
 	$(MAKE)
 	$(MAKE) check
 
-binary-polybuild: build
+binary-polybuild:
 	rm -rf debian/polybuild
 	$(MKDIR) debian/polybuild/DEBIAN
 	$(INSTALL_DATA) debian/conffiles.polybuild debian/polybuild/DEBIAN/conffiles
@@ -29,7 +29,7 @@ binary-polybuild: build
 	$(INSTALL_DATA) debian/copyright debian/changelog README \
 		debian/polybuild/usr/share/doc/polybuild/.
 	gzip -9 debian/polybuild/usr/share/doc/polybuild/changelog*
-	$(MAKE) install DESTDIR=debian/polybuild
+	$(MAKE) install DESTDIR=$(PWD)/debian/polybuild
 	$(INSTALL_DATA) polybuild.default debian/polybuild/etc/default/polybuild
 	$(INSTALL_SCRIPT) polybuild.cron debian/polybuild/etc/cron.daily/polybuild
 	gzip -9v debian/polybuild/usr/share/man/man*/*
@@ -45,5 +45,7 @@ binary-polybuild: build
 binary: binary-polybuild
 
 clean:
-	make clean
+	-make clean
 	rm -rf debian/polybuild
+
+.PHONY: build

@@ -1,4 +1,4 @@
 #! /bin/sh
 set -e
-perl -wc ${srcdir:-.}/polybuild
-perl -wc ${srcdir:-.}/stabilize
+perl -wc build/polybuild
+perl -wc build/stabilize

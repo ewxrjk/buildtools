@@ -16,3 +16,6 @@ config.aux
 config.log
 config.status
 configure
+*~
+build/polybuild
+build/stabilize

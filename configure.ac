@@ -20,5 +20,5 @@ AM_INIT_AUTOMAKE([foreign])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 AC_CONFIG_SRCDIR([polybuild])
 AC_SET_MAKE
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile build/Makefile])
 AC_OUTPUT
