@@ -421,7 +421,7 @@ our @suppress = ();
 open(CONF,  "<$config") or die "ERROR: reading $config: $!\n";
 while(defined($_ = <CONF>)) {
     ++$line;
-    next if /^\#/ or !/\S/;	# skip blank and comment lines
+    next if /^\s*\#/ or !/\S/;	# skip blank and comment lines
     s/^\s+//;
     s/\s+$//;
     my @l = parse_line($_, "$config:$line");
