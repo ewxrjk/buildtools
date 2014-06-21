@@ -23,13 +23,13 @@ man_MANS=polybuild.1 stabilize.1
 	sed < $< > $@.new \
 		"s/version *=.*/version='${VERSION}';/"
 	chmod 555 $@.new
-	mv $@.new $@
+	mv -f $@.new $@
 
 %.1: %
 	podchecker $<
 	rm -f $@.new
 	pod2man -c 'Build Tools' -r ${VERSION} $< > $@.new
-	mv $@.new $@
+	mv -f $@.new $@
 
 clean-local:
 	rm -f stabilize stabilize.1
