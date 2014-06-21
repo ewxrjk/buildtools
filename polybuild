@@ -538,15 +538,6 @@ while(defined($_ = <CONF>)) {
 }
 close CONF;
 
-for my $branch (keys %branches) {
-    if(exists $branches{$branch}->{depends}) {
-        print "$branch: depends on ", join(" ", keys %{$branches{$branch}->{depends}}), "\n";
-    }
-    if(exists $branches{$branch}->{rdepends}) {
-        print "$branch: rdepends from ", join(" ", keys %{$branches{$branch}->{rdepends}}), "\n";
-    }
-}
-
 # Guess branch types where not stated
 for my $branch (keys %branches) {
     next if exists $branches{$branch}->{type};
