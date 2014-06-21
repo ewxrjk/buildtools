@@ -543,7 +543,7 @@ for my $branch (keys %branches) {
         print "$branch: depends on ", join(" ", keys %{$branches{$branch}->{depends}}), "\n";
     }
     if(exists $branches{$branch}->{rdepends}) {
-        print "$branch: rdepends fromn ", join(" ", keys %{$branches{$branch}->{rdepends}}), "\n";
+        print "$branch: rdepends from ", join(" ", keys %{$branches{$branch}->{rdepends}}), "\n";
     }
 }
 
@@ -555,7 +555,7 @@ for my $branch (keys %branches) {
     if($branches{$branch}->{location} =~ /git|bzr/) {
         $branches{$branch}->{type} = $&;
     } else {
-        die "ERROR: cannot guess type for branch '{$branch}'\n";
+        die "ERROR: cannot guess type for branch '$branch'\n";
     }
 }
 
