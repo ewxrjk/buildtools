@@ -356,8 +356,9 @@ specify B<gmake> on a system with an inadequate native version.
 
 =item B<scanner> SCANNER
 
-Defines the static analyzer to use on this host.  The supported values
-are currently just B<clang> to use the Clang static analyzer.
+Defines the static analyzer to use on this host.
+
+To use the Clang static analyzer, use B<clang> or B<clang->I<VERSION>.
 
 =item B<clean> B<yes>|B<no>
 
@@ -483,7 +484,7 @@ while(defined($_ = <CONF>)) {
             unless defined $host;
         my $scanner = shift @l;
 	die "$config:$line: unrecognized static analyser\n"
-            unless $scanner eq 'clang';
+          unless $scanner =~ /^clang(-.*)?$/;
 	$hosts{$host}->{scanner} = $scanner;
     } elsif($cmd eq 'clean') {
 	die "$config:$line: 'clean' outside 'define-host'\n"
@@ -809,7 +810,7 @@ for(;;) {
 		}
                 # Capture static analysis output
                 if(exists $hosts{$host}->{scanner}) {
-                    if($hosts{$host}->{scanner} eq 'clang') {
+                    if($hosts{$host}->{scanner} =~ /^clang(-.*)?$/) {
                         # Clang scanner output is in _scans/<something>
                         # in the work directory.  The <something>
                         # is not readily predictable and may be missing.
@@ -917,8 +918,8 @@ for(;;) {
             # Identify the static analyser to use
             my $scanprefix = "";
             if(exists $hosts{$host}->{scanner}) {
-                if($hosts{$host}->{scanner} eq 'clang') {
-                    $scanprefix = "scan-build -o _scans";
+                if($hosts{$host}->{scanner} =~ /^clang(-.*)?$/) {
+                    $scanprefix = "scan-build$1 -o _scans";
                 }
             }
 	    # Start the build
