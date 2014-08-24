@@ -18,6 +18,7 @@
 
 use strict;
 use POSIX;
+use File::Find;
 
 =head1 NAME
 
@@ -356,9 +357,8 @@ specify B<gmake> on a system with an inadequate native version.
 
 =item B<scanner> SCANNER
 
-Defines the static analyzer to use on this host.
-
-To use the Clang static analyzer, use B<clang> or B<clang->I<VERSION>.
+Defines the scanner to use on this host.
+See below.
 
 =item B<clean> B<yes>|B<no>
 
@@ -403,12 +403,42 @@ packages that shared libraries are found in.
 
 =back
 
+=head2 Scanner Stanzas
+
+A scanner stanzer starts B<define-scanner> NAME and is followed by
+per-scanner directives.  The NAME is used in per-host B<scanner>
+directives.
+
+=over
+
+=item B<interposer> COMMAND
+
+Defines the prefix to use this scanner.
+
+=item B<directory> DIRECTORY
+
+The directory where scan results will be stored.
+
+This direcory will be search for an B<index.html> file, which will be
+linkedfrom the results page.
+
+=back
+
+The built-in scanner B<clang> is equivalent to:
+
+  define-scanner clang
+    interposer "scan-build -o _scans"
+    directory _scans
+
+Built-in scanners may be overridden by B<define-scanner> directives.
+
 =cut
 
 # Parse configuration file
 my $line = 0;
 my $host;			# current host stanza
 my $branch;			# current branch stanza
+my $scanner;                    # current scanner stanza
 my $workdir = "_builds/_master"; # working directory
 my $refresh_interval = 10;	# refresh interval
 our %hosts = ();
@@ -419,6 +449,12 @@ our %defines = ();
 our %globalenv = ();
 our %group_limit = ();
 our @suppress = ();
+our %scanners = (
+                 "clang" => {
+                             "interposer" => ["scan-build -o _scans"],
+                             "directory" => "_scans",
+                            }
+                );
 open(CONF,  "<$config") or die "ERROR: reading $config: $!\n";
 while(defined($_ = <CONF>)) {
     ++$line;
@@ -431,6 +467,7 @@ while(defined($_ = <CONF>)) {
     if($cmd =~ /^define/) {
 	undef $host;
 	undef $branch;
+        undef $scanner;
     }
     if($cmd eq 'define-host') {
 	$host = shift @l;
@@ -483,8 +520,8 @@ while(defined($_ = <CONF>)) {
         die "$config:$line: 'scanner' outside 'define-host'\n"
             unless defined $host;
         my $scanner = shift @l;
-	die "$config:$line: unrecognized static analyser\n"
-          unless $scanner =~ /^clang(-.*)?$/;
+	die "$config:$line: unrecognized scanner '$scanner'\n"
+          unless exists $scanners{$scanner};
 	$hosts{$host}->{scanner} = $scanner;
     } elsif($cmd eq 'clean') {
 	die "$config:$line: 'clean' outside 'define-host'\n"
@@ -533,11 +570,28 @@ while(defined($_ = <CONF>)) {
         my $shost = shift @l;
         my $sbranch = shift @l;
         push(@suppress, [$shost, $sbranch]);
+    } elsif($cmd eq 'define-scanner') {
+        $scanner = shift @l;
+        $scanners{$scanner} = {};
+    } elsif($cmd eq 'directory'
+            or $cmd eq 'interposer') {
+        die "$config:$line: '$cmd' outside 'define-scanner'\n"
+          unless defined $scanner;
+        $scanners{$scanner}->{$cmd} = shift @l;
     } else {
 	die "$config:$line: unknown verb '$cmd'\n";
     }
 }
 close CONF;
+
+# Sanity-check scanners
+for my $scanner (keys %scanners) {
+    for my $key ("interposer", "directory") {
+        if(!exists $scanners{$scanner}->{$key}) {
+            die "$config: scanner '$scanner' missing '$key'\n";
+        }
+    }
+}
 
 # Guess branch types where not stated
 for my $branch (keys %branches) {
@@ -810,22 +864,20 @@ for(;;) {
 		}
                 # Capture static analysis output
                 if(exists $hosts{$host}->{scanner}) {
-                    if($hosts{$host}->{scanner} =~ /^clang(-.*)?$/) {
-                        # Clang scanner output is in _scans/<something>
-                        # in the work directory.  The <something>
-                        # is not readily predictable and may be missing.
-                        my $w = $hosts{$host}->{work};
-                        my $h = $hosts{$host}->{hostname};
-                        cmd("rm", "-rf", "$host.$branch.SCAN");
-                        cmd("scp", "-r", "$h:$w/$branch/_scans", "$host.$branch.SCAN");
-                        for my $scanout (glob "$workdir/$host.$branch.SCAN/*/*") {
-                            if($scanout =~ /index.html$/) {
-                                $branches{$branch}->{scanout}->{$host}
-                                  = $scanout;
-                                last;
-                            }
-                        }
-                    }
+                    my $d = $scanners{$hosts{$host}->{scanner}}->{directory};
+                    my $w = $hosts{$host}->{work};
+                    my $h = $hosts{$host}->{hostname};
+                    # Retrieve the scanner results
+                    cmd("rm", "-rf", "$host.$branch.SCAN");
+                    cmd("scp", "-r", "$h:$w/$branch/$d", "$host.$branch.SCAN");
+                    # Find the HTML
+                    my $i;
+                    find(sub {
+                             $i = $File::Find::name if $_ eq 'index.html';
+                         },
+                         "$workdir/$host.$branch.SCAN");
+                    $branches{$branch}->{scanout}->{$host} = $i
+                      if defined $i;
                 }
 	    } else {
 		if($?) {
@@ -918,9 +970,7 @@ for(;;) {
             # Identify the static analyser to use
             my $scanprefix = "";
             if(exists $hosts{$host}->{scanner}) {
-                if($hosts{$host}->{scanner} =~ /^clang(-.*)?$/) {
-                    $scanprefix = "scan-build$1 -o _scans";
-                }
+                $scanprefix = $scanners{$hosts{$host}->{scanner}}->{interposer};
             }
 	    # Start the build
 	    $hosts{$host}->{pid} = background("$host.$b.BUILD.txt",
