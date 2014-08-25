@@ -18,5 +18,12 @@
 SUBDIRS=build
 dist_noinst_SCRIPTS=polybuild.cron polybuild.default
 TESTS=syntaxcheck
-EXTRA_DIST=polybuild stabilize polybuild.conf README.md syntaxcheck
+EXTRA_DIST=polybuild stabilize polybuild.conf README.md syntaxcheck \
+	scripts/dist debian/changelog debian/conffiles.polybuild \
+	debian/control debian/copyright debian/rules
 export srcdir
+
+echo-distdir:
+	@echo $(distdir)
+echo-version:
+	@echo $(VERSION)

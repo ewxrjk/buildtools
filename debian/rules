@@ -26,7 +26,7 @@ binary-polybuild:
 	$(MKDIR) debian/polybuild/etc/cron.daily
 	$(MKDIR) debian/polybuild/etc/default
 	$(MKDIR) debian/polybuild/usr/share/doc/polybuild
-	$(INSTALL_DATA) debian/copyright debian/changelog README \
+	$(INSTALL_DATA) debian/copyright debian/changelog README.md \
 		debian/polybuild/usr/share/doc/polybuild/.
 	gzip -9 debian/polybuild/usr/share/doc/polybuild/changelog*
 	$(MAKE) install DESTDIR=$(PWD)/debian/polybuild
