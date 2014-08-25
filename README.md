@@ -1,7 +1,8 @@
 Build Tools
 ===========
 
-* polybuild
+polybuild
+---------
 
 This script builds a collection of different programs on multiple
 hosts.  Currently it can only build bzr and git branches, but it could
@@ -9,7 +10,8 @@ be adapted to other VCSs if necessary.
 
 See polybuild.conf for an example configuration.
 
-* stabilize
+stabilize
+---------
 
 This script pushes changes from a 'development' branch to a 'stable'
 branch provided the branch continues to build.
@@ -23,11 +25,13 @@ Installation
     ./configure
     make check
     sudo make install
+    man polybuild
+    man stabilize
 
 Copyright
 ---------
 
-Copyright (C) 2008-2014 Richard Kettlewell
+Copyright © 2008-2014 Richard Kettlewell
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

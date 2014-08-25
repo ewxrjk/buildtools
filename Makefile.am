@@ -18,5 +18,5 @@
 SUBDIRS=build
 dist_noinst_SCRIPTS=polybuild.cron polybuild.default
 TESTS=syntaxcheck
-EXTRA_DIST=polybuild stabilize polybuild.conf
+EXTRA_DIST=polybuild stabilize polybuild.conf README.md
 export srcdir
