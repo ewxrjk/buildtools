@@ -18,7 +18,7 @@
 bin_SCRIPTS=polybuild stabilize
 man_MANS=polybuild.1 stabilize.1
 
-%: ../%
+${bin_SCRIPTS}: %: ${top_srcdir}/%
 	rm -f $@.new
 	sed < $< > $@.new \
 		"s/version *=.*/version='${VERSION}';/"
