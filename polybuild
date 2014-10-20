@@ -1381,6 +1381,10 @@ On a Debian system:
 
   adduser --system --home /var/cache/build --shell /bin/bash build
 
+Under Fedora:
+
+  useradd --system --create-home --shell /bin/bash build
+
 Under OSX (you will need to pick an unused UID):
 
   dscl . -readall /Users UniqueID|awk '/[0-9]$/{print $2}'|sort
