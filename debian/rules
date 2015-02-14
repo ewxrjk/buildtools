@@ -28,11 +28,11 @@ binary-polybuild:
 	$(MKDIR) debian/polybuild/usr/share/doc/polybuild
 	$(INSTALL_DATA) debian/copyright debian/changelog README.md \
 		debian/polybuild/usr/share/doc/polybuild/.
-	gzip -9 debian/polybuild/usr/share/doc/polybuild/changelog*
+	gzip -9n debian/polybuild/usr/share/doc/polybuild/changelog*
 	$(MAKE) install DESTDIR=$(PWD)/debian/polybuild
 	$(INSTALL_DATA) polybuild.default debian/polybuild/etc/default/polybuild
 	$(INSTALL_SCRIPT) polybuild.cron debian/polybuild/etc/cron.daily/polybuild
-	gzip -9v debian/polybuild/usr/share/man/man*/*
+	gzip -9nv debian/polybuild/usr/share/man/man*/*
 	cd debian/polybuild && \
 		find -name DEBIAN -prune -o -type f -print \
 			| sed 's/^\.\///' \
