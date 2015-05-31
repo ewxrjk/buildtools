@@ -1392,7 +1392,7 @@ Under OSX (you will need to pick an unused UID):
   # pick an unused UID and GID below 500...
   sudo dscl . -create /Groups/build
   sudo dscl . -create /Groups/build PrimaryGroupID 299
-  sudo dscl . -create /Groups/build Password *'
+  sudo dscl . -create /Groups/build Password '*'
   sudo dscl . -create /Users/build
   sudo dscl . -create /Users/build UniqueID 299
   sudo dscl . -create /Users/build UserShell /bin/bash
