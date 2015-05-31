@@ -1385,7 +1385,7 @@ Under Fedora:
 
   useradd --system --create-home --shell /bin/bash build
 
-Under OSX (you will need to pick an unused UID):
+Under OSX (you will need to pick an unused UID), to create the user:
 
   dscl . -readall /Users UniqueID|awk '/[0-9]$/{print $2}'|sort
   dscl . -readall /Groups PrimaryGroupID|awk '/[0-9]$/{print $2}'|sort
@@ -1401,6 +1401,11 @@ Under OSX (you will need to pick an unused UID):
   sudo dscl . -create /Users/build Password '*'
   sudo mkdir /Users/build
   sudo chown build /Users/build
+
+...and to enable inbound SSH, if it is not already enabled:
+
+  sudo dscl . append /Groups/com.apple.access_ssh User build
+  sudo dscl . append /Groups/com.apple.access_ssh GroupMembers $(sudo dscl . read /Users/build GeneratedUID|awk '{print $2}')
 
 Under FreeBSD:
 
