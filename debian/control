@@ -1,7 +1,7 @@
 Source: rjk-build-tools
 Maintainer: Richard Kettlewell <rjk@greenend.org.uk>
 Section: devel
-Priority: extra
+Priority: optional
 Standards-Version: 3.8.1.0
 Build-Depends: perl
 

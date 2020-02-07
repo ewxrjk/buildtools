@@ -100,6 +100,9 @@ build() {
 rm -rf products
 mkdir products
 
+[ -e configure ] || autoreconf -si
+[ -e Makefile ] || ./configure
+
 # Build the source archive
 [ -d doc ] && s make -C doc html
 s make distcheck
@@ -112,8 +115,7 @@ source=${srcpkg}-${version}     # source directory
 archive=${srcpkg}-${version}.tar.gz # tarball
 
 # Build .deb files
-s build araminta amd64          # wheezy
-#s build chroot:wheezy32 i386   # wheezy - no point, no binaries...
+s build araminta amd64          # buster
 
 #cp ${archive} doc/*.html doc/*.css products/.
 lintian -i -I products/*.deb

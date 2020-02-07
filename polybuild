@@ -270,7 +270,7 @@ using macro definitions or environment variables.
 
 =head2 Global Directives
 
-The following global directives are suported.  They may appear
+The following global directives are supported.  They may appear
 anywhere in the config file.
 
 =over
@@ -419,7 +419,7 @@ Defines the prefix to use this scanner.
 
 The directory where scan results will be stored.
 
-This direcory will be search for an B<index.html> file, which will be
+This directory will be search for an B<index.html> file, which will be
 linkedfrom the results page.
 
 =back

@@ -1,3 +1,10 @@
+rjk-build-tools (0.5.1) unstable; urgency=medium
+
+  * Fix Perl warning.
+  * Minor packaging and spelling fixes.
+
+ -- Richard Kettlewell <rjk@terraraq.org.uk>  Fri, 07 Feb 2020 17:14:23 +0000
+
 rjk-build-tools (0.5) unstable; urgency=low
 
   * Configurable scanners.
