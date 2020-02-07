@@ -1327,7 +1327,7 @@ sub parse_line($$) {
 sub expand_environment($$) {
   local $_ = shift;
   my $where = shift;
-  while(/\${([a-z0-9_]+)}/i) {
+  while(/\$\{([a-z0-9_]+)\}/i) {
     my $k = $1;
     my $v = ($defines{$k} or $ENV{$k});
     if(!defined $v) {
