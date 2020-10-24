@@ -419,7 +419,7 @@ Defines the prefix to use this scanner.
 
 The directory where scan results will be stored.
 
-This directory will be search for an B<index.html> file, which will be
+This directory will be searched for an B<index.html> file, which will be
 linkedfrom the results page.
 
 =back
