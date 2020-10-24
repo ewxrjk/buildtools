@@ -1379,7 +1379,7 @@ builds, to eliminate variation in the environment of "real" users.
 
 On a Debian system:
 
-  adduser --system --home /var/cache/build --shell /bin/bash build
+  adduser --system --home /var/lib/build --shell /bin/bash build
 
 Under Fedora:
 
