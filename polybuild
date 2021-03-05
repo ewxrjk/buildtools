@@ -1333,7 +1333,7 @@ sub expand_environment($$) {
     if(!defined $v) {
       die "$where: unknown definition '$k'\n";
     }
-    s/\${$k}/$v/g;
+    s/\$\{$k}/$v/g;
   }
   return $_;
 }
