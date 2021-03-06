@@ -209,7 +209,7 @@ td.down {
   width: 2em
 }
 ";
-my $version = "0.4";
+my $version = "0.5.3";
 
 # Parse command line
 our $config = "/etc/polybuild.conf";
@@ -966,7 +966,7 @@ for(;;) {
 	    # it's probably not actually going to be a large proportion
 	    # of the build time.
 	    ssh($host, "rm -rf \Q$w/$b\E");
-	    cmd("rsync", "-r", "$b", "$hosts{$host}->{hostname}:$w/.");
+	    cmd("rsync", "-rl", "$b", "$hosts{$host}->{hostname}:$w/.");
             # Identify the static analyser to use
             my $scanprefix = "";
             if(exists $hosts{$host}->{scanner}) {
@@ -1277,7 +1277,7 @@ sub ssh($$) {
     my $host = shift;
     my $cmd = shift;
 
-    return cmd("ssh", $hosts{$host}->{hostname}, $cmd);
+    return cmd("ssh", "-x", $hosts{$host}->{hostname}, $cmd);
 }
 
 # background(LOGFILE, SUBROUTINE) - start executing SUBROUTINE in a subprocess

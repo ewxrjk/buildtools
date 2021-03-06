@@ -20,3 +20,5 @@ configure
 build/polybuild
 build/stabilize
 products
+*.log
+*.trs

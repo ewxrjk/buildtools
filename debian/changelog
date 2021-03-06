@@ -1,3 +1,16 @@
+rjk-build-tools (0.5.3) unstable; urgency=medium
+
+  * rsync symlinks
+  * suppress X11 forwarding
+
+ -- Richard Kettlewell <rjk@terraraq.uk>  Sat, 06 Mar 2021 11:31:20 +0000
+
+rjk-build-tools (0.5.2) stable; urgency=medium
+
+  * Another Perl warning.
+
+ -- Richard Kettlewell <rjk@terraraq.uk>  Fri, 05 Mar 2021 16:59:10 +0000
+
 rjk-build-tools (0.5.1) unstable; urgency=medium
 
   * Fix Perl warning.
