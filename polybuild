@@ -219,13 +219,13 @@ our $base;                      # report base URL
 while(@ARGV > 0 and $ARGV[0] =~ /^-/) {
     local $_ = shift @ARGV;
     if($_ eq '--config') {
-	$config = shift @ARGV;
+        $config = shift @ARGV;
     } elsif($_ eq '--email') {
         $email = shift @ARGV;
     } elsif($_ eq '--base') {
         $base = shift @ARGV;
     } elsif($_ eq '--exclude') {
-	push(@exclude, shift @ARGV);
+        push(@exclude, shift @ARGV);
     } elsif($_ eq '--help') {
         print <<EOF;
 Usage:
@@ -247,7 +247,7 @@ EOF
        print "$version\n";
        exit 0;
     } else {
-	die "ERROR: unknown option '$_'\n";
+        die "ERROR: unknown option '$_'\n";
     }
 }
 our @include = @ARGV;
@@ -436,11 +436,11 @@ Built-in scanners may be overridden by B<define-scanner> directives.
 
 # Parse configuration file
 my $line = 0;
-my $host;			# current host stanza
-my $branch;			# current branch stanza
+my $host;                       # current host stanza
+my $branch;                     # current branch stanza
 my $scanner;                    # current scanner stanza
 my $workdir = "_builds/_master"; # working directory
-my $refresh_interval = 10;	# refresh interval
+my $refresh_interval = 10;      # refresh interval
 our %hosts = ();
 our @hostorder = ();
 our %branches = ();
@@ -458,114 +458,114 @@ our %scanners = (
 open(CONF,  "<$config") or die "ERROR: reading $config: $!\n";
 while(defined($_ = <CONF>)) {
     ++$line;
-    next if /^\s*\#/ or !/\S/;	# skip blank and comment lines
+    next if /^\s*\#/ or !/\S/;  # skip blank and comment lines
     s/^\s+//;
     s/\s+$//;
     my @l = parse_line($_, "$config:$line");
     my $cmd = shift @l;
     @l = map(expand_environment($_, "$config:$line"), @l);
     if($cmd =~ /^define/) {
-	undef $host;
-	undef $branch;
+        undef $host;
+        undef $branch;
         undef $scanner;
     }
     if($cmd eq 'define-host') {
-	$host = shift @l;
-	push(@hostorder, $host) unless exists $hosts{$host};
-	$hosts{$host} = {
-	    'hostname' => $host,
-	    'work' => "_builds/$host",
-	    'state' => 'inactive',
-	    'path' => [],
-	    'environ' => {},
-	    'make' => 'make',
-	    'group' => $host,
+        $host = shift @l;
+        push(@hostorder, $host) unless exists $hosts{$host};
+        $hosts{$host} = {
+            'hostname' => $host,
+            'work' => "_builds/$host",
+            'state' => 'inactive',
+            'path' => [],
+            'environ' => {},
+            'make' => 'make',
+            'group' => $host,
             'clean' => 'yes',
-	    };
+            };
     } elsif($cmd eq 'hostname') {
-	die "$config:$line: 'hostname' outside 'define-host'\n"
-	    unless defined $host;
-	$hosts{$host}->{hostname} = shift @l;
+        die "$config:$line: 'hostname' outside 'define-host'\n"
+            unless defined $host;
+        $hosts{$host}->{hostname} = shift @l;
     } elsif($cmd eq 'group') {
-	die "$config:$line: 'group' outside 'define-host'\n"
-	    unless defined $host;
-	$hosts{$host}->{group} = shift @l;
+        die "$config:$line: 'group' outside 'define-host'\n"
+            unless defined $host;
+        $hosts{$host}->{group} = shift @l;
     } elsif($cmd eq 'group-limit') {
-	die "$config:$line: 'group-limit' outside 'define-host'\n"
-	    unless defined $host;
-	$group_limit{$hosts{$host}->{group}} = shift @l;
+        die "$config:$line: 'group-limit' outside 'define-host'\n"
+            unless defined $host;
+        $group_limit{$hosts{$host}->{group}} = shift @l;
     } elsif($cmd eq 'os') {
-	die "$config:$line: 'os' outside 'define-host'\n"
-	    unless defined $host;
-	$hosts{$host}->{os} = shift @l;
+        die "$config:$line: 'os' outside 'define-host'\n"
+            unless defined $host;
+        $hosts{$host}->{os} = shift @l;
     } elsif($cmd eq 'work') {
-	die "$config:$line: 'work' outside 'define-host'\n"
-	    unless defined $host;
-	$hosts{$host}->{work} = shift @l;
+        die "$config:$line: 'work' outside 'define-host'\n"
+            unless defined $host;
+        $hosts{$host}->{work} = shift @l;
     } elsif($cmd eq 'path') {
-	die "$config:$line: 'path' outside 'define-host'\n"
-	    unless defined $host;
-	push(@{$hosts{$host}->{path}}, shift @l);
+        die "$config:$line: 'path' outside 'define-host'\n"
+            unless defined $host;
+        push(@{$hosts{$host}->{path}}, shift @l);
     } elsif($cmd eq 'environ') {
-	die "$config:$line: 'environ' outside 'define-host'\n"
-	    unless defined $host;
-	my $k = shift @l;
-	my $v = shift @l;
-	$hosts{$host}->{environ}->{$k} = $v;
+        die "$config:$line: 'environ' outside 'define-host'\n"
+            unless defined $host;
+        my $k = shift @l;
+        my $v = shift @l;
+        $hosts{$host}->{environ}->{$k} = $v;
     } elsif($cmd eq 'make') {
-	die "$config:$line: 'make' outside 'define-host'\n"
-	    unless defined $host;
-	$hosts{$host}->{make} = shift @l;
+        die "$config:$line: 'make' outside 'define-host'\n"
+            unless defined $host;
+        $hosts{$host}->{make} = shift @l;
     } elsif($cmd eq 'scanner') {
         die "$config:$line: 'scanner' outside 'define-host'\n"
             unless defined $host;
         my $scanner = shift @l;
-	die "$config:$line: unrecognized scanner '$scanner'\n"
+        die "$config:$line: unrecognized scanner '$scanner'\n"
           unless exists $scanners{$scanner};
-	$hosts{$host}->{scanner} = $scanner;
+        $hosts{$host}->{scanner} = $scanner;
     } elsif($cmd eq 'clean') {
-	die "$config:$line: 'clean' outside 'define-host'\n"
-	    unless defined $host;
-	$hosts{$host}->{clean} = shift @l;
+        die "$config:$line: 'clean' outside 'define-host'\n"
+            unless defined $host;
+        $hosts{$host}->{clean} = shift @l;
     } elsif($cmd eq 'define-branch') {
-	$branch = shift @l;
-	push(@branchorder, $branch) unless exists $branches{$branch};
-	$branches{$branch} = {
-	    'state' => 'inactive',
-	};
+        $branch = shift @l;
+        push(@branchorder, $branch) unless exists $branches{$branch};
+        $branches{$branch} = {
+            'state' => 'inactive',
+        };
     } elsif($cmd eq 'location') {
-	die "$config:$line: 'location' outside 'define-branch'\n"
-	    unless defined $branch;
-	$branches{$branch}->{location} = shift @l;
+        die "$config:$line: 'location' outside 'define-branch'\n"
+            unless defined $branch;
+        $branches{$branch}->{location} = shift @l;
     } elsif($cmd eq 'type') {
-	die "$config:$line: 'type' outside 'define-branch'\n"
-	    unless defined $branch;
+        die "$config:$line: 'type' outside 'define-branch'\n"
+            unless defined $branch;
         my $type = shift @l;
         die "$config:$line: unknown branch type '$type'\n"
           unless $type eq 'bzr' or $type eq 'git';
-	$branches{$branch}->{type} = $type;
+        $branches{$branch}->{type} = $type;
     } elsif($cmd eq 'checkout') {
-	die "$config:$line: 'checkout' outside 'define-branch'\n"
-	    unless defined $branch;
-	$branches{$branch}->{checkout} = shift @l;
+        die "$config:$line: 'checkout' outside 'define-branch'\n"
+            unless defined $branch;
+        $branches{$branch}->{checkout} = shift @l;
     } elsif($cmd eq 'depends') {
-	die "$config:$line: 'depends' outside 'define-branch'\n"
-	    unless defined $branch;
+        die "$config:$line: 'depends' outside 'define-branch'\n"
+            unless defined $branch;
         my $target = shift @l;
         die "$config:$line: 'depends' on later branch\n"
           unless exists $branches{$target};
-	$branches{$branch}->{depends}->{$target} = 1;
+        $branches{$branch}->{depends}->{$target} = 1;
         $branches{$target}->{rdepends}->{$branch} = 1;
     } elsif($cmd eq 'define') {
-	my $k = shift @l;
-	my $v = shift @l;
-	$defines{$k} = $v;
+        my $k = shift @l;
+        my $v = shift @l;
+        $defines{$k} = $v;
     } elsif($cmd eq 'global-environ') {
-	my $k = shift @l;
-	my $v = shift @l;
-	$globalenv{$k} = $v;
+        my $k = shift @l;
+        my $v = shift @l;
+        $globalenv{$k} = $v;
     } elsif($cmd eq 'local-work') {
-	$workdir = shift @l;
+        $workdir = shift @l;
     } elsif($cmd eq 'suppress') {
         my $shost = shift @l;
         my $sbranch = shift @l;
@@ -579,7 +579,7 @@ while(defined($_ = <CONF>)) {
           unless defined $scanner;
         $scanners{$scanner}->{$cmd} = shift @l;
     } else {
-	die "$config:$line: unknown verb '$cmd'\n";
+        die "$config:$line: unknown verb '$cmd'\n";
     }
 }
 close CONF;
@@ -609,7 +609,7 @@ for my $branch (keys %branches) {
 for my $host (keys %hosts) {
     my $group = $hosts{$host}->{group};
     if(!exists $group_limit{$hosts{$host}->{group}}) {
-	$group_limit{$hosts{$host}->{group}} = 1;
+        $group_limit{$hosts{$host}->{group}} = 1;
     }
 }
 
@@ -619,43 +619,43 @@ my $included_hosts = 0;
 my $included_branches = 0;
 for my $hb (@include) {
     if(exists $hosts{$hb}) {
-	$hosts{$hb}->{state} = 'active';
-	$included_hosts = 1;
+        $hosts{$hb}->{state} = 'active';
+        $included_hosts = 1;
     } elsif(exists $branches{$hb}) {
-	$branches{$hb}->{state} = 'active';
-	$included_branches = 1;
+        $branches{$hb}->{state} = 'active';
+        $included_branches = 1;
     } else {
-	die "ERROR: '$hb' is neither a host nor a branch\n";
+        die "ERROR: '$hb' is neither a host nor a branch\n";
     }
 }
 
 # If no hosts (branches) were explicitly included then we activate all of them.
 if(!$included_hosts) {
     for my $host (keys %hosts) {
-	$hosts{$host}->{state} = 'active';
+        $hosts{$host}->{state} = 'active';
     }
 }
 if(!$included_branches) {
     for my $branch (keys %branches) {
-	$branches{$branch}->{state} = 'active';
+        $branches{$branch}->{state} = 'active';
     }
 }
 
 # We apply any explicit exclusions last (trumping all of the above).
 for my $hb (@exclude) {
     if(exists $hosts{$hb}) {
-	$hosts{$hb}->{state} = 'inactive';
+        $hosts{$hb}->{state} = 'inactive';
     } elsif(exists $branches{$hb}) {
-	$branches{$hb}->{state} = 'inactive';
+        $branches{$hb}->{state} = 'inactive';
     } else {
-	die "ERROR: '$hb' is neither a host nor a branch\n";
+        die "ERROR: '$hb' is neither a host nor a branch\n";
     }
 }
 
 # Create and enter the working directory
 if(!-d $workdir) {
     if(system("mkdir", "-p", "-m0755", $workdir) != 0) {
-	exit(1);
+        exit(1);
     }
 }
 
@@ -664,7 +664,7 @@ for my $host (keys %hosts) {
     next unless $hosts{$host}->{state} eq 'active';
     if(ssh($host, "mkdir -p -m0755 \Q$hosts{$host}->{work}\E")) {
         print STDERR "ERROR: marking host $host as down\n";
-	$hosts{$host}->{state} = 'down';
+        $hosts{$host}->{state} = 'down';
     }
     chomp($hosts{$host}->{work_abs} = `ssh $hosts{$host}->{hostname} cd \Q$hosts{$host}->{work}\E '&&' pwd`);
 }
@@ -709,7 +709,7 @@ for my $branch (keys %branches) {
     next unless $branches{$branch}->{state} eq 'active';
     $branches{$branch}->{status} = {};
     for my $host (keys %hosts) {
-	$branches{$branch}->{status}->{$host} = "unbuilt";
+        $branches{$branch}->{status}->{$host} = "unbuilt";
     }
 }
 
@@ -850,18 +850,18 @@ for my $host (keys %hosts) {
 for(;;) {
     # See if any subprocess have finished
     for my $host (keys %hosts) {
-	next unless $hosts{$host}->{status} eq 'working';
-	# See if this host's job has finished
-	my $r = waitpid($hosts{$host}->{pid}, WNOHANG);
-	if($r > 0) {
-	    # It has; update the branch status
-	    my $branch = $hosts{$host}->{branch};
-	    if($branches{$branch}->{status}->{$host} eq 'building') {
-		if($?) {
-		    $branches{$branch}->{status}->{$host} = 'buildfail';
-		} else {
-		    $branches{$branch}->{status}->{$host} = 'buildok';
-		}
+        next unless $hosts{$host}->{status} eq 'working';
+        # See if this host's job has finished
+        my $r = waitpid($hosts{$host}->{pid}, WNOHANG);
+        if($r > 0) {
+            # It has; update the branch status
+            my $branch = $hosts{$host}->{branch};
+            if($branches{$branch}->{status}->{$host} eq 'building') {
+                if($?) {
+                    $branches{$branch}->{status}->{$host} = 'buildfail';
+                } else {
+                    $branches{$branch}->{status}->{$host} = 'buildok';
+                }
                 # Capture static analysis output
                 if(exists $hosts{$host}->{scanner}) {
                     my $d = $scanners{$hosts{$host}->{scanner}}->{directory};
@@ -879,72 +879,72 @@ for(;;) {
                     $branches{$branch}->{scanout}->{$host} = $i
                       if defined $i;
                 }
-	    } else {
-		if($?) {
-		    $branches{$branch}->{status}->{$host} = 'checkfail';
-		} else {
-		    $branches{$branch}->{status}->{$host}  = 'checkok';
+            } else {
+                if($?) {
+                    $branches{$branch}->{status}->{$host} = 'checkfail';
+                } else {
+                    $branches{$branch}->{status}->{$host}  = 'checkok';
                     if($hosts{$host}->{clean} eq 'yes') {
                         ssh($host, "rm -rf \Q$hosts{$host}->{work}/$branch\E");
                     }
-		}
-	    }
-	    # ...and the host status
-	    $hosts{$host}->{status} = 'idle';
-	    print STDERR "$host $branch -> $branches{$branch}->{status}->{$host}\n";
-	    make_html($refresh_interval);
-	}
+                }
+            }
+            # ...and the host status
+            $hosts{$host}->{status} = 'idle';
+            print STDERR "$host $branch -> $branches{$branch}->{status}->{$host}\n";
+            make_html($refresh_interval);
+        }
     }
     my %group_jobs = map(($_ => 0), keys %group_limit);
-	                        # count of jobs per group
-    my $working = 0;		# count of working hosts
-    my $idle = 0;		# count of idle hosts
+                                # count of jobs per group
+    my $working = 0;            # count of working hosts
+    my $idle = 0;               # count of idle hosts
     for my $host (keys %hosts) {
-	next unless $hosts{$host}->{state} eq 'active';
-	if($hosts{$host}->{status} eq 'working') {
-	    my $group = $hosts{$host}->{group};
-	    ++$group_jobs{$group};
-	    ++$working;
-	} else {
-	    ++$idle;
-	}
+        next unless $hosts{$host}->{state} eq 'active';
+        if($hosts{$host}->{status} eq 'working') {
+            my $group = $hosts{$host}->{group};
+            ++$group_jobs{$group};
+            ++$working;
+        } else {
+            ++$idle;
+        }
     }
     if($idle == 0) {
-	# No host is idle.  Wait a bit and try again.
-	sleep(2);
-	next;
+        # No host is idle.  Wait a bit and try again.
+        sleep(2);
+        next;
     }
     # For each idle host look for some work to do
     for my $host (keys %hosts) {
-	next unless $hosts{$host}->{state} eq 'active';
-	next unless $hosts{$host}->{status} eq 'idle';
-	my $group = $hosts{$host}->{group};
-	next if $group_jobs{$group} >= $group_limit{$group};
-	my $b;
-	# Look for some work for this host to do
-	for my $branch (@branchorder) {
-	    next unless $branches{$branch}->{state} eq 'active';
-	    my $s = $branches{$branch}->{status}->{$host};
-	    if($s eq 'unbuilt' or $s eq 'buildok') {
-		$b = $branch;
-		last;
-	    }
-	}
-	# Skip this host if there's no more work for it
-	next unless defined $b;
-	$hosts{$host}->{branch} = $b;
-	my $w = $hosts{$host}->{work};
-	my $wa = $hosts{$host}->{work_abs};
-	my $env = "";
+        next unless $hosts{$host}->{state} eq 'active';
+        next unless $hosts{$host}->{status} eq 'idle';
+        my $group = $hosts{$host}->{group};
+        next if $group_jobs{$group} >= $group_limit{$group};
+        my $b;
+        # Look for some work for this host to do
+        for my $branch (@branchorder) {
+            next unless $branches{$branch}->{state} eq 'active';
+            my $s = $branches{$branch}->{status}->{$host};
+            if($s eq 'unbuilt' or $s eq 'buildok') {
+                $b = $branch;
+                last;
+            }
+        }
+        # Skip this host if there's no more work for it
+        next unless defined $b;
+        $hosts{$host}->{branch} = $b;
+        my $w = $hosts{$host}->{work};
+        my $wa = $hosts{$host}->{work_abs};
+        my $env = "";
         # Construct the environment
         my %env = ();
-	for my $k (keys %globalenv) {
+        for my $k (keys %globalenv) {
           $env{$k} = $globalenv{$k};
         }
-	my $e = $hosts{$host}->{environ};
-	for my $k (keys %$e) {
+        my $e = $hosts{$host}->{environ};
+        for my $k (keys %$e) {
             $env{$k} = $e->{$k};
-	}
+        }
         # Add ref to dependencies, on Debian-like hosts only
         if($hosts{$host}->{os} !~ /^(debian|ubuntu)/i) {
             for my $d (keys %{$branches{$b}->{depends}}) {
@@ -954,33 +954,33 @@ for(;;) {
             }
         }
         $env = "";
-	for my $k (keys %env) {
-	    $env .= "$k=\Q$env{$k}\E;export $k;"
-	}
-	if(@{$hosts{$host}->{path}}) {
-	    $env .= "PATH=" . join(":", @{$hosts{$host}->{path}}, "\$PATH") . ";export PATH;";
-	}
-	if($branches{$b}->{status}->{$host} eq 'unbuilt') {
-	    # Copy the source code to the build host.  We could do this
-	    # in the background too but for now we do it synchronously;
-	    # it's probably not actually going to be a large proportion
-	    # of the build time.
-	    ssh($host, "rm -rf \Q$w/$b\E");
-	    cmd("rsync", "-rl", "$b", "$hosts{$host}->{hostname}:$w/.");
+        for my $k (keys %env) {
+            $env .= "$k=\Q$env{$k}\E;export $k;"
+        }
+        if(@{$hosts{$host}->{path}}) {
+            $env .= "PATH=" . join(":", @{$hosts{$host}->{path}}, "\$PATH") . ";export PATH;";
+        }
+        if($branches{$b}->{status}->{$host} eq 'unbuilt') {
+            # Copy the source code to the build host.  We could do this
+            # in the background too but for now we do it synchronously;
+            # it's probably not actually going to be a large proportion
+            # of the build time.
+            ssh($host, "rm -rf \Q$w/$b\E");
+            cmd("rsync", "-rl", "$b", "$hosts{$host}->{hostname}:$w/.");
             # Identify the static analyser to use
             my $scanprefix = "";
             if(exists $hosts{$host}->{scanner}) {
                 $scanprefix = $scanners{$hosts{$host}->{scanner}}->{interposer};
             }
-	    # Start the build
-	    $hosts{$host}->{pid} = background("$host.$b.BUILD.txt",
+            # Start the build
+            $hosts{$host}->{pid} = background("$host.$b.BUILD.txt",
             sub {
-		# Figure out how to build the software.  It would be
-		# nice if we could put this logic into the config file
-		# and provide per-branch overrides but for now this will
-		# do.
-		my $has_configure_ac = -e "$workdir/$b/configure.ac";
-		my $has_configure = -e "$workdir/$b/configure";
+                # Figure out how to build the software.  It would be
+                # nice if we could put this logic into the config file
+                # and provide per-branch overrides but for now this will
+                # do.
+                my $has_configure_ac = -e "$workdir/$b/configure.ac";
+                my $has_configure = -e "$workdir/$b/configure";
                 my $has_debian = -d "$workdir/$b/debian"
                     && ($hosts{$host}->{os} =~ /^(debian|ubuntu)/i);
                 my @build = ();
@@ -1041,22 +1041,22 @@ for(;;) {
                     }
                 }
                 return ssh($host, join(" && ", @build));
-	    });
-	    $branches{$b}->{status}->{$host} = 'building';
-	} else {
-	    # Start the check
-	    $hosts{$host}->{pid} = background("$host.$b.CHECK.txt",
-	    sub {
-		return ssh($host, "$env cd \Q$w/$b\E && $hosts{$host}->{make} check");
-	    });
-	    $branches{$b}->{status}->{$host} = 'checking';
-	}
-	# Count up number of working hosts
-	++$working;
-	$hosts{$host}->{status} = 'working';
-	++$group_jobs{$group};
-	print STDERR "$host $b -> $branches{$b}->{status}->{$host}\n";
-	make_html($refresh_interval);
+            });
+            $branches{$b}->{status}->{$host} = 'building';
+        } else {
+            # Start the check
+            $hosts{$host}->{pid} = background("$host.$b.CHECK.txt",
+            sub {
+                return ssh($host, "$env cd \Q$w/$b\E && $hosts{$host}->{make} check");
+            });
+            $branches{$b}->{status}->{$host} = 'checking';
+        }
+        # Count up number of working hosts
+        ++$working;
+        $hosts{$host}->{status} = 'working';
+        ++$group_jobs{$group};
+        print STDERR "$host $b -> $branches{$b}->{status}->{$host}\n";
+        make_html($refresh_interval);
     }
     # If there's no hosts doing any work then quit
     last if $working == 0;
@@ -1127,13 +1127,13 @@ sub genmail {
     push(@html, "  </colgroup>\n");
     my $id = 0;
     for my $host (@hostorder) {
-	next if $hosts{$host}->{state} eq 'inactive';
-	push(@html, "  <colgroup id=results$id class=results>\n");
-	push(@html, "   <col class=build>\n");
-	push(@html, "   <col class=check>\n");
-	push(@html, "   <col class=check>\n") if exists $hosts{$host}->{scanner};
-	push(@html, "  </colgroup>\n");
-	++$id;
+        next if $hosts{$host}->{state} eq 'inactive';
+        push(@html, "  <colgroup id=results$id class=results>\n");
+        push(@html, "   <col class=build>\n");
+        push(@html, "   <col class=check>\n");
+        push(@html, "   <col class=check>\n") if exists $hosts{$host}->{scanner};
+        push(@html, "  </colgroup>\n");
+        ++$id;
     }    
     push(@html, "  <thead>\n");
 
@@ -1145,13 +1145,13 @@ sub genmail {
     $id = 0;
     my $hrows = 0;
     for my $host (@hostorder) {
-	next if $hosts{$host}->{state} eq 'inactive';
+        next if $hosts{$host}->{state} eq 'inactive';
         my @bits = split(/-/, $hosts{$host}->{os});
         my $nbits = scalar @bits;
         $hrows = $nbits if $nbits > $hrows;
         my $colspan = 2 + exists $hosts{$host}->{scanner};
-	push(@html, "    <th id=host$id colspan=${colspan} class=host>$host\n");
-	++$id;
+        push(@html, "    <th id=host$id colspan=${colspan} class=host>$host\n");
+        ++$id;
     }
 
     # OS versions (over as many rows as required)
@@ -1175,52 +1175,52 @@ sub genmail {
 
     $id = 0;
     for my $branch (@branchorder) {
-	next if $branches{$branch}->{state} eq 'inactive';
-	push(@html, "   <tr class=results>\n");
-	push(@html, "    <th id=branch$id class=branch>$branch\n");
-	my $hid = 0;
-	for my $host (@hostorder) {
-	    next if $hosts{$host}->{state} eq 'inactive';
-	    my $s = $branches{$branch}->{status}->{$host};
+        next if $branches{$branch}->{state} eq 'inactive';
+        push(@html, "   <tr class=results>\n");
+        push(@html, "    <th id=branch$id class=branch>$branch\n");
+        my $hid = 0;
+        for my $host (@hostorder) {
+            next if $hosts{$host}->{state} eq 'inactive';
+            my $s = $branches{$branch}->{status}->{$host};
 
             if($hosts{$host}->{state} eq 'down') {
                 $s = 'down';
             }
-	    my $buildlog;
-	    my $buildstate = 'unbuilt';
-	    my $checklog;
-	    my $checkstate = 'unready';
+            my $buildlog;
+            my $buildstate = 'unbuilt';
+            my $checklog;
+            my $checkstate = 'unready';
 
-	    if($s =~ /^build/) {
-		$buildlog = "$host.$branch.BUILD.txt";
-		$buildstate = $s;
-	    }
-	    if($s =~ /^check/) {
-		$buildlog = "$host.$branch.BUILD.txt";
-		$buildstate = 'buildok';
-		$checklog = "$host.$branch.CHECK.txt";
-		$checkstate = $s;
-	    }
+            if($s =~ /^build/) {
+                $buildlog = "$host.$branch.BUILD.txt";
+                $buildstate = $s;
+            }
+            if($s =~ /^check/) {
+                $buildlog = "$host.$branch.BUILD.txt";
+                $buildstate = 'buildok';
+                $checklog = "$host.$branch.CHECK.txt";
+                $checkstate = $s;
+            }
             if($s eq 'down') {
                 $buildstate = 'down';
                 $checkstate = 'down';
             }
-	    if(defined $buildlog) {
-		push(@html, "    <td id=build$hid class=$buildstate>\n");
-		push(@html, "     <a href=\"$workdir/$buildlog\" title=\"Build log\">\n");
-		push(@html, "      $buildtextmap{$s}\n");
-		push(@html, "     </a>\n");
-	    } else {
-		push(@html, "    <td id=build$hid class=$buildstate>$buildtextmap{$s}\n");
-	    }
-	    if(defined $checklog) {
-		push(@html, "    <td id=check$hid class=$checkstate>\n");
-		push(@html, "     <a href=\"$workdir/$checklog\" title=\"Check log\">\n");
-		push(@html, "      $checktextmap{$s}\n");
-		push(@html, "     </a>\n");
-	    } else {
-		push(@html, "    <td id=check$hid class=$checkstate>$checktextmap{$s}\n");
-	    }
+            if(defined $buildlog) {
+                push(@html, "    <td id=build$hid class=$buildstate>\n");
+                push(@html, "     <a href=\"$workdir/$buildlog\" title=\"Build log\">\n");
+                push(@html, "      $buildtextmap{$s}\n");
+                push(@html, "     </a>\n");
+            } else {
+                push(@html, "    <td id=build$hid class=$buildstate>$buildtextmap{$s}\n");
+            }
+            if(defined $checklog) {
+                push(@html, "    <td id=check$hid class=$checkstate>\n");
+                push(@html, "     <a href=\"$workdir/$checklog\" title=\"Check log\">\n");
+                push(@html, "      $checktextmap{$s}\n");
+                push(@html, "     </a>\n");
+            } else {
+                push(@html, "    <td id=check$hid class=$checkstate>$checktextmap{$s}\n");
+            }
             if(exists $hosts{$host}->{scanner}) {
                 my $scanout = $branches{$branch}->{scanout}->{$host};
                 if(defined $buildlog and defined $scanout) {
@@ -1232,9 +1232,9 @@ sub genmail {
                     push(@html, "    <td id=scan$hid class=$buildstate>-\n");
                 }
             }
-	    ++$hid;
-	}
-	++$id;
+            ++$hid;
+        }
+        ++$id;
     }
     push(@html, "  </tbody>\n");
     push(@html, " </table>\n");
@@ -1255,19 +1255,19 @@ sub cmd {
     print STDERR "EXEC: ", join(" ", @_), "\n";
     my $pid = fork();
     if(!defined $pid) {
-	die "ERROR: fork: $!\n";
+        die "ERROR: fork: $!\n";
     }
     if($pid == 0) {
-	chdir($dir) or die "ERROR: chdir $workdir: $!\n";
-	exec(@_);
-	die "ERROR: exec $_[0]: $!\n";
+        chdir($dir) or die "ERROR: chdir $workdir: $!\n";
+        exec(@_);
+        die "ERROR: exec $_[0]: $!\n";
     }
     my $r = waitpid($pid, 0);
     if($r != $pid) {
-	die "ERROR: waitpid: $!\n";
+        die "ERROR: waitpid: $!\n";
     }
     if($? != 0) {
-	printf STDERR "ERROR: $_[0] returned %#x\n", $?;
+        printf STDERR "ERROR: $_[0] returned %#x\n", $?;
     }
     return $?;
 }
@@ -1287,13 +1287,13 @@ sub background {
     my $cmd = shift;
     my $pid = fork();
     if(!defined $pid) {
-	die "ERROR: fork: $!\n";
+        die "ERROR: fork: $!\n";
     }
     if($pid == 0) {
-	open(STDOUT, ">$workdir/$log") or die "ERROR: $workdir/$log: $!\n";
-	open(STDERR, ">&STDOUT");
-	open(STDIN, "</dev/null");
-	POSIX::_exit(&$cmd(@_) ? 1 : 0);
+        open(STDOUT, ">$workdir/$log") or die "ERROR: $workdir/$log: $!\n";
+        open(STDERR, ">&STDOUT");
+        open(STDIN, "</dev/null");
+        POSIX::_exit(&$cmd(@_) ? 1 : 0);
     }
     return $pid;
 }
