@@ -40,7 +40,7 @@ if [ -e /etc/polybuild.conf ]; then
     else
       echo "ERROR: Polybuild failed."
       echo
-      tail /var/log/polybuild
+      cat /var/log/polybuild
       exit 1
     fi
   fi
