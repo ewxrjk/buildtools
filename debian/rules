@@ -37,7 +37,7 @@ binary-polybuild:
 		find -name DEBIAN -prune -o -type f -print \
 			| sed 's/^\.\///' \
 			| xargs md5sum > DEBIAN/md5sums
-	dpkg-gencontrol -isp -ppolybuild -Pdebian/polybuild -Tdebian/substvars.polybuild
+	dpkg-gencontrol -ppolybuild -Pdebian/polybuild -Tdebian/substvars.polybuild
 	chown -R root:root debian/polybuild
 	chmod -R g-ws debian/polybuild
 	dpkg --build debian/polybuild ..
