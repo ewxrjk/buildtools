@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 AC_PREREQ([2.61])
-AC_INIT([rjk-build-tools], [0.5.3], [rjk@greenend.org.uk])
+AC_INIT([rjk-build-tools], [0.5.4], [rjk@greenend.org.uk])
 AC_CONFIG_AUX_DIR([config.aux])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign])
