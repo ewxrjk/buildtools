@@ -2,9 +2,9 @@
 
 # Install commands.  You wouldn't normally override these.
 INSTALL=install
-INSTALL_DATA=$(INSTALL) -p -o root -g root -m 644
-INSTALL_PROGRAM=$(INSTALL) -p -o root -g root -m 755
-INSTALL_SCRIPT=$(INSTALL) -p -o root -g root -m 755
+INSTALL_DATA=$(INSTALL) -p -m 644
+INSTALL_PROGRAM=$(INSTALL) -p -m 755
+INSTALL_SCRIPT=$(INSTALL) -p -m 755
 MKDIR=mkdir -p -m 755
 
 export INSTALL_DATA
@@ -19,7 +19,7 @@ build:
 	$(MAKE)
 	$(MAKE) check
 
-binary-polybuild:
+binary-polybuild: build
 	rm -rf debian/polybuild
 	$(MKDIR) debian/polybuild/DEBIAN
 	$(INSTALL_DATA) debian/conffiles.polybuild debian/polybuild/DEBIAN/conffiles
@@ -38,9 +38,8 @@ binary-polybuild:
 			| sed 's/^\.\///' \
 			| xargs md5sum > DEBIAN/md5sums
 	dpkg-gencontrol -ppolybuild -Pdebian/polybuild -Tdebian/substvars.polybuild
-	chown -R root:root debian/polybuild
 	chmod -R g-ws debian/polybuild
-	dpkg --build debian/polybuild ..
+	dpkg-deb --root-owner-group --build debian/polybuild ..
 
 binary: binary-polybuild
 
